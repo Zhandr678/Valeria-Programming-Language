@@ -360,7 +360,7 @@ namespace val
 		if (auto t = AnalyzeSymbolsAndOperators()) return *t;
 
 		// Unknown character
-		throw;
+		throw LexerException("Unknown Character", _CurLocation);
 	}
 
 }
