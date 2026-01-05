@@ -5,7 +5,7 @@
 #include <optional>
 
 #include "lexing2023/filereader.h"
-#include "Lexing/token.h"
+#include "Token.h"
 
 class Lexer
 {

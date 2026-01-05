@@ -1,12 +1,14 @@
-#include "lexer.h"
+#include "Lexer.h"
+
 #include <cctype>
-#include <unordered_map>
 #include <algorithm>
+
+#include "LexerException.h"
 
 #pragma region("Helpers")
 
 #define _CurToken    this->inp.view(this->token_size)
-#define _CurLocation Location{ this->inp.filename, this->inp.line, this->inp.column }
+#define _CurLocation Location{ this->inp.filename, this->inp.line + 1, this->inp.column }
 #define _LastChar    this->inp.view(this->token_size + 1)[this->token_size]
 
 static bool IsWhitespace(char c)
@@ -64,61 +66,88 @@ std::optional<Token> Lexer::AnalyzeNumbers()
 	while (Has(token_size + 1))
 	{
 		char c = _LastChar;
+		token_size++;
 		if (std::isdigit(c))
 		{
-			if (is_zero && not dot) { throw; } // number after 0
-			if (is_zero && exp && not dot_for_exp) { throw; } // number after e0, E0 
-
+			if (is_zero && not dot) 
+			{
+				Commit(token_size);
+				throw LexerException("No Dot After Leading 0", _CurLocation); 
+			} // number after 0
+			
 			prev_was_exp = false;
 			if (exp)
 			{
-				if (exp_is_zero && not dot_for_exp) { throw; } // e04, e00, e016589
+				if (exp_is_zero && not dot_for_exp) 
+				{ 
+					Commit(token_size);
+					throw LexerException("No Dot After Leading e0", _CurLocation); 
+				} // number after e0, E0 
 				if (c == '0') { exp_is_zero = true; }
 
 				has_leading_number = true;
 			}
-			token_size++;
 		}
 		else if (c == '.' && exp)
 		{
-			if (not has_leading_number) { throw; } // dot without leading number
-			if (dot_for_exp) { throw; } // 2 dots
+			if (not has_leading_number) 
+			{
+				Commit(token_size);
+				throw LexerException("Dot Without Leading Number", _CurLocation); 
+			} // dot without leading number
+			if (dot_for_exp) 
+			{
+				Commit(token_size);
+				throw LexerException("2 Dots in a Number", _CurLocation); 
+			} // 2 dots
 
 			prev_was_exp = false;
 			dot_for_exp = true;
-			token_size++;
 		}
 		else if (c == '.' && not exp)
 		{
-			if (dot) { throw; } // 2 dots
+			if (dot) 
+			{ 
+				Commit(token_size);
+				throw LexerException("2 Dots in a Number", _CurLocation); 
+			} // 2 dots
 
 			prev_was_exp = false;
 			dot = true;
-			token_size++;
 		}
 		else if (c == 'e' || c == 'E')
 		{
-			if (exp) { throw; } // 2 exps
+			if (exp) 
+			{ 
+				Commit(token_size);
+				throw LexerException("2 Exponent Symbols in a Number", _CurLocation); 
+			} // 2 exps
 
 			exp = true;
 			has_leading_number = false;
 			prev_was_exp = true;
-			token_size++;
 		}
 		else if (c == '+' || c == '-')
 		{
 			if (not prev_was_exp) { break; } // operator between numbers
 			prev_was_exp = false;
-			token_size++;
 		}
 		else if (isalpha(c))
 		{
-			throw; // bad identifier name
+			Commit(token_size);
+			throw LexerException("Identifier Name Starting from Number", _CurLocation); // bad identifier name
 		}
-		else { break; }
+		else {
+			token_size--;
+			break; 
+		}
 	}
 
-	if (prev_was_exp) { throw; } // finished with e, E
+	if (prev_was_exp) 
+	{ 
+		Commit(token_size);
+		throw LexerException("Number Finished with Exponent Symbol", _CurLocation); 
+	} // finished with e, E
 	
 	TokenLabel num_label = TokenLabel::LIT_NUMBER;
 	if (not dot && not dot_for_exp) 
@@ -153,11 +182,13 @@ std::optional<Token> Lexer::AnalyzeLiterals()
 
 		if (c == '\n')
 		{
-			throw; // unterminated string
+			Commit(token_size);
+			throw LexerException("Unterminated String Literal", _CurLocation); // unterminated string
 		}
 	}
 
-	throw; // EOF before closing quote
+	Commit(token_size);
+	throw LexerException("Unterminated String Literal at EOF", _CurLocation); // EOF before closing quote
 }
 
 std::optional<Token> Lexer::AnalyzeKeywords()
@@ -300,7 +331,8 @@ std::optional<Token> Lexer::AnalyzeComments()
 			else { star = false; }
 		}
 
-		throw; // unterminated block comment
+		Commit(token_size);
+		throw LexerException("Unterminated Block Comment", _CurLocation); // unterminated block comment
 	}
 
 	return std::nullopt;

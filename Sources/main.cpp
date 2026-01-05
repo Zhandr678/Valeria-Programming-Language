@@ -37,12 +37,19 @@ int main(int argc, char* argv[])
 
 	Lexer lexer(std::move(freader));
 
-	auto t = lexer.ReadAndClassifyNext();
+	
 
-	while (t.label != TokenLabel::_EOF_)
+	try {
+		auto t = lexer.ReadAndClassifyNext();
+		while (t.label != TokenLabel::_EOF_)
+		{
+			std::cout << std::format("[\n\tLabel: {},\n\tValue: {},\n\tLocation: {} {}\n]\n", t.label, t.attr, t.loc.line, t.loc.at);
+			t = lexer.ReadAndClassifyNext();
+		}
+	}
+	catch (std::runtime_error& e)
 	{
-		std::cout << std::format("[\n\tLabel: {},\n\tValue: {},\n\tLocation: {} {}\n]\n", t.label, t.attr, t.loc.line, t.loc.at );
-		t = lexer.ReadAndClassifyNext();
+		std::cout << e.what() << '\n';
 	}
 
 #pragma endregion

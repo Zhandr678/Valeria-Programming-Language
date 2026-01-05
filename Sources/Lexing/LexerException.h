@@ -1,0 +1,20 @@
+#pragma once
+
+#include <exception>
+#include <string>
+
+#include "Token.h"
+
+class LexerException : public std::runtime_error
+{
+public:
+	explicit LexerException(const std::string& msg, const std::string& filename, int line, int at);
+	explicit LexerException(const std::string& msg, Location loc);
+	explicit LexerException(const std::string& msg);
+	
+	LexerException() = default;
+	LexerException(const LexerException& other) = default;
+	LexerException& operator =(const LexerException& other) = default;
+	LexerException(LexerException&& other) noexcept = default;
+	LexerException& operator =(LexerException&& other) noexcept = default;
+};
