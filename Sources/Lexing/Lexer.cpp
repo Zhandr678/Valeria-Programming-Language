@@ -256,6 +256,7 @@ namespace val
 			if (v == ">=") return Commit(2), Token{ TokenLabel::OP_GEQ,    ">=", _CurLocation };
 			if (v == "&&") return Commit(2), Token{ TokenLabel::OP_LAND,   "&&", _CurLocation };
 			if (v == "||") return Commit(2), Token{ TokenLabel::OP_LOR,    "||", _CurLocation };
+			if (v == "**") return Commit(2), Token{ TokenLabel::OP_POW,    "**", _CurLocation };
 		}
 
 		// Single-character operators
@@ -279,7 +280,7 @@ namespace val
 		case '*': label = TokenLabel::OP_TIMES;      break;
 		case '/': label = TokenLabel::OP_DIV;        break;
 		case '%': label = TokenLabel::OP_MOD;        break;
-		case '^': label = TokenLabel::OP_POW;        break;
+		case '^': label = TokenLabel::OP_XOR;        break;
 		case '&': label = TokenLabel::OP_AND;        break;
 		case '|': label = TokenLabel::OP_OR;         break;
 		case '!': label = TokenLabel::OP_NOT;        break;
