@@ -15,11 +15,11 @@ int main(int argc, char* argv[])
 
 #pragma region("Argument Parsing")
 
-	cxxopts::Options args(args_config::PROGRAM_NAME, args_config::PROGRAM_DESC);
-	args_config::AddOptions(args, args_config::OPTIONS);
+	cxxopts::Options args(val::PROGRAM_NAME, val::PROGRAM_DESC);
+	val::AddOptions(args, val::OPTIONS);
 
 	cxxopts::ParseResult result;
-	if (not args_config::AssertCorrectOptions(result, argc, argv, args)) 
+	if (not val::AssertCorrectOptions(result, argc, argv, args))
 	{
 		return 1;
 	}
@@ -33,15 +33,11 @@ int main(int argc, char* argv[])
 	std::filesystem::path val_source_path = result["file"].as<std::string>();
 	std::ifstream in(val_source_path);
 	
-	lexing::filereader freader(&in, val_source_path.filename().string());
-
-	Lexer lexer(std::move(freader));
-
-	
+	val::Lexer lexer(lexing::filereader(&in, val_source_path.filename().string()));
 
 	try {
 		auto t = lexer.ReadAndClassifyNext();
-		while (t.label != TokenLabel::_EOF_)
+		while (t.label != val::TokenLabel::_EOF_)
 		{
 			std::cout << std::format("[\n\tLabel: {},\n\tValue: {},\n\tLocation: {} {}\n]\n", t.label, t.attr, t.loc.line, t.loc.at);
 			t = lexer.ReadAndClassifyNext();

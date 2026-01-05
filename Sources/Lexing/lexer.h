@@ -7,23 +7,28 @@
 #include "lexing2023/filereader.h"
 #include "Token.h"
 
-class Lexer
+namespace val
 {
-private:
-	lexing::filereader inp;
-	size_t token_size, view_capacity;
 
-	bool Has(size_t next);
-	void Commit(size_t next);
+	class Lexer
+	{
+	private:
+		lexing::filereader inp;
+		size_t token_size, view_capacity;
 
-	std::optional <Token> AnalyzeNumbers();
-	std::optional <Token> AnalyzeLiterals();
-	std::optional <Token> AnalyzeKeywords();
-	std::optional <Token> AnalyzeSymbolsAndOperators();
-	std::optional <Token> AnalyzeComments();
+		bool Has(size_t next);
+		void Commit(size_t next);
 
-public:
-	explicit Lexer(lexing::filereader&& input);
+		std::optional <Token> AnalyzeNumbers();
+		std::optional <Token> AnalyzeLiterals();
+		std::optional <Token> AnalyzeKeywords();
+		std::optional <Token> AnalyzeSymbolsAndOperators();
+		std::optional <Token> AnalyzeComments();
 
-	Token ReadAndClassifyNext();
-};
+	public:
+		explicit Lexer(lexing::filereader&& input);
+
+		Token ReadAndClassifyNext();
+	};
+
+}

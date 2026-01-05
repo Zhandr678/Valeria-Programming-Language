@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <iostream>
 
-namespace args_config
+namespace val
 {
 	const std::string PROGRAM_NAME = "Valeria";
 	const std::string PROGRAM_DESC = "Compiler for Valeria Programming Language";

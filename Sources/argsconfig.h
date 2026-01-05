@@ -1,7 +1,7 @@
 #pragma once
 #include "cxxopts.hpp"
 
-namespace args_config
+namespace val
 {
 	struct CompilerOption
 	{
