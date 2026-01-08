@@ -7,7 +7,7 @@
 
 namespace val
 {
-	class LexerException : public std::runtime_error
+	class LexerException : public std::logic_error
 	{
 	public:
 		explicit LexerException(const std::string& msg, const std::string& filename, int line, int at);
@@ -19,5 +19,7 @@ namespace val
 		LexerException& operator =(const LexerException& other) = default;
 		LexerException(LexerException&& other) noexcept = default;
 		LexerException& operator =(LexerException&& other) noexcept = default;
+
+		~LexerException() = default;
 	};
 }

@@ -347,6 +347,20 @@ namespace val
 	{
 	}
 
+	Lexer::Lexer(Lexer&& lexer) noexcept :
+		inp(std::move(lexer.inp)), token_size(lexer.token_size), view_capacity(lexer.view_capacity)
+	{
+	}
+
+	Lexer& Lexer::operator=(Lexer&& lexer) noexcept
+	{
+		this->inp = std::move(lexer.inp);
+		this->token_size = lexer.token_size;
+		this->view_capacity = lexer.view_capacity;
+
+		return *this;
+	}
+
 	Token Lexer::ReadAndClassifyNext()
 	{
 		// Skip whitespace

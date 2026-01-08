@@ -6,7 +6,8 @@
 #include <algorithm>
 #include <format>
 
-#include "Lexing/lexer.h"
+#include "Lexing/Lexer.h"
+#include "Parsing/Parser.h"
 
 #include "argsconfig.h"
 #include "tvm/includes.h"
@@ -28,32 +29,14 @@ int main(int argc, char* argv[])
 
 #pragma endregion
 
-
-
-#pragma region("Lexical Analysis")
-
 	std::filesystem::path val_source_path = result["file"].as<std::string>();
 	std::ifstream in(val_source_path);
-	val::Lexer lexer(lexing::filereader(&in, val_source_path.filename().string()));
 
-	try {
-		auto t = lexer.ReadAndClassifyNext();
-		while (t.label != val::TokenLabel::_EOF_)
-		{
-			std::cout << std::format("[\n\tLabel: {},\n\tValue: {},\n\tLocation: {} {}\n]\n", t.label, t.attr, t.loc.line, t.loc.at);
-			t = lexer.ReadAndClassifyNext();
-		}
-	}
-	catch (std::runtime_error& e)
-	{
-		std::cout << e.what() << '\n';
-	}
-
-#pragma endregion
-
-	mylang::expr e(mylang::expr_add, mylang::expr(mylang::expr_lit, 5), mylang::expr(mylang::expr_lit, 5));
-
-	std::cout << e.view_binop().extr_left().view_literal().extr_value();
+	val::Parser parser(
+		val::Lexer(
+			lexing::filereader(&in, val_source_path.filename().string())
+		)
+	);
 
 	std::cout << "Compilation Finished\n";
 	return 0;

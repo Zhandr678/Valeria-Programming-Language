@@ -26,7 +26,16 @@ namespace val
 	public:
 		explicit Lexer(lexing::filereader&& input);
 
+		Lexer() = delete;
+		Lexer(const Lexer&) = delete;
+		Lexer& operator=(const Lexer& lexer) = delete;
+
+		Lexer(Lexer&& lexer) noexcept;
+		Lexer& operator=(Lexer&& lexer) noexcept;
+
 		Token ReadAndClassifyNext();
+
+		~Lexer() = default;
 	};
 
 }
