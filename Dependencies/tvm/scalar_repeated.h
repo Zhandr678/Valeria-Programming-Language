@@ -230,90 +230,290 @@
 
 
 
-// A scalar is similar to a shared_ptr, but its value
-// cannot be extended (inherited from).
-// This makes it possible to store the reference counter
-// and the value in the same memory segment.
-// Written by Hans de Nivelle, December 2022.
-
-#ifndef TVM_SCALAR_
-#define TVM_SCALAR_    
+#ifndef TVM_SCALAR_REPEATED_
+#define TVM_SCALAR_REPEATED_  1 
 
 #include <new>
+#include <utility>
 #include <cstdint>
 
-#include "hexprint.h" 
 #include "concepts.h"
+#include "hexprint.h"
+
+// Written by Hans de Nivelle and Dina Muktubayeva 
+// October-November 2022.
 
 namespace tvm
 {
+   // This class is used only for determinizing sizes and offsets.
+   // No instances are created. 
 
-   template< typename S > 
-   struct scalar 
+   template< typename S, typename R > 
+   struct sr_size
    {
-      size_t nrrefs;
+      size_t nrrefs;   
+      size_t ss;    
+      size_t cc;  
       S scal;  
+      R r0; 
 
-      scalar( const S& scal )
-        : nrrefs(0), scal( scal ) 
-      { }
-
-      scalar( S&& scal )
-        : nrrefs(0), scal( std::move( scal ))
-      { }
-
-      scalar( const scalar& ) = default;
+      sr_size( ) = delete;
+      ~sr_size( ) = delete; 
+         // To be sure that nobody will get the idea of
+         // creating one. 
    };
 
 
-   // As far as I see, we cannot have normal constructors,
-   // and also no destructors.  
+   // We cannot have traditional constructors, because we need
+   // to do the allocation by yourselves.
+   // We have a destructor, but this destructor is incomplete, because 
+   // it doesn't destroy the repeated part. 
 
-   template< typename S > 
-   scalar<S> * constr_scalar( const S& scal )
+   template< typename S, typename R >
+   struct scalar_repeated 
    {
-      return new scalar<S> ( scal ); 
+      size_t nrrefs;   
+      size_t ss;  
+      size_t cc;  
+      S scal;  
+
+      using SR = sr_size< S, R > ;
+      static constexpr size_t size0 = offsetof( SR, r0 );
+
+      scalar_repeated( const S& scal, size_t ss, size_t cc )
+        : nrrefs(0), ss(ss), cc(cc), scal( scal ) 
+      { }
+
+      scalar_repeated( S&& scal, size_t ss, size_t cc )
+        : nrrefs(0), ss(ss), cc(cc), scal( std::move( scal ))
+      { }
+
+      R* begin( )
+      {
+         return & (( sr_size<S,R> * ) this ) -> r0;
+      }
+
+      const R* begin( ) const
+      { 
+         return & (( const sr_size<S,R> * ) this ) -> r0; 
+      }
+
+      R* end( )
+      {
+         return & (( sr_size<S,R> * ) this ) -> r0 + ss;
+      }
+
+      const R* end( ) const
+      {
+         return & (( const sr_size<S,R> * ) this ) -> r0 + ss;
+      }
+
+      size_t size( ) const { return ss; }
+      size_t capacity( ) const { return cc; } 
+
+      ~scalar_repeated( ) = default;
+      scalar_repeated( const scalar_repeated& ) = delete;
+      scalar_repeated& operator = ( const scalar_repeated& ) = delete; 
+
+   };
+
+   // Allocate, but don't initialize:
+
+   template< typename S, typename R > 
+   scalar_repeated<S,R> * allocate( size_t cap )
+   {
+      size_t a = scalar_repeated<S,R> :: size0 + cap * sizeof(R); 
+      return ( scalar_repeated<S,R> * ) operator new(a);  
    }
 
-   template< typename S >
-   scalar<S> * constr_scalar( S&& scal )
+   // These functions should be viewed as constructors:
+
+   template< typename S, typename R > 
+   scalar_repeated<S,R> * 
+   constr_scalar_repeated( const S& scal, size_t cap )
    {
-      return new scalar<S> ( std::move( scal )); 
+      auto* alloc = allocate<S,R> ( cap );
+      new (alloc) scalar_repeated<S,R> ( scal, 0, cap );
+      return alloc; 
    }
 
-   template< typename S >
-   bool iswritable( const scalar<S> * sr ) 
+   template< typename S, typename R, const_iterator<R> I > 
+   scalar_repeated<S,R> * 
+   constr_scalar_repeated( const S& scal, I begin, I end )
+   {
+      size_t cap = end - begin; 
+      auto* alloc = allocate<S,R> ( cap );
+
+      new (alloc) scalar_repeated<S,R> ( scal, cap, cap );
+     
+      R* to = alloc -> begin( );
+      for( I from = begin; from != end; ++ from ) 
+         new ( to ++ ) R( *from );
+
+      return alloc;
+   }
+
+   template< typename S, typename R >
+   scalar_repeated<S,R> *
+   constr_scalar_repeated( S&& scal, size_t cap )
+   {
+      auto* alloc = allocate<S,R> ( cap );
+      new (alloc) scalar_repeated<S,R> ( std::move( scal ), 0, cap );
+      return alloc;
+   }
+
+   template< typename S, typename R, move_iterator<R> I >
+   scalar_repeated<S,R> *
+   constr_scalar_repeated( S&& scal, I begin, I end )
+   {
+      size_t cap = end - begin;
+      auto* alloc = allocate<S,R> ( cap );
+
+      new (alloc) scalar_repeated<S,R> ( std::move( scal ), cap, cap );
+
+      R* to = alloc -> begin( );
+      for( I from = begin; from != end; ++ from )
+         new ( to ++ ) R( *from );
+
+      return alloc;
+   }
+
+
+   template< typename S, typename R >
+   inline bool iswritable( const scalar_repeated<S,R> * sr ) 
    {
       return ( sr -> nrrefs ) == 1;
    }
 
-   template< std::copy_constructible S > 
-   scalar<S> * replacebywritable( scalar<S> * sr ) 
+   template< typename S, typename R > 
+   scalar_repeated<S,R> * replacebywritable( scalar_repeated<S,R> * sr ) 
    {
       if( -- (  sr -> nrrefs ))
-         return new scalar<S> ( sr -> scal );
+      {
+         auto p = constr_scalar_repeated<S,R> ( sr -> scal, 
+                                                sr -> begin( ), sr -> end( ));
+         return p;
+      }
       else
          return sr;
    }
 
-   template< typename S >
-   void printstate( const scalar<S> * sr, std::ostream& out ) 
+
+   template< typename S, typename R >
+   void printstate( const scalar_repeated<S,R> * sr, std::ostream& out ) 
    {
       auto s = (uintptr_t) sr; 
       hexprint( out, s, 2 ); 
-      out << ", #" << sr -> nrrefs;
+      out << ", #" << sr -> nrrefs << ", ";
+      out << ( sr -> ss ) << "/" << ( sr -> cc ); 
    }
 
-   template< typename S >
-   inline scalar<S> * 
-   takeshare( scalar<S> * sr ) { ++ sr -> nrrefs; return sr; }     
+   template< typename S, typename R >
+   inline scalar_repeated<S,R> * 
+   takeshare( scalar_repeated<S,R> * sr ) { ++ sr -> nrrefs; return sr; }     
 
-   template< std::destructible S >
-   void dropshare( scalar<S> * sr ) 
+   template< std::destructible S, std::destructible R >
+   void dropshare( scalar_repeated<S,R> * sr ) 
    {
       if( -- sr -> nrrefs == 0 )
       {
-         delete sr;  
+         for( auto d = sr -> begin( ); d != sr -> end( ); ++ d ) 
+            d -> ~R( );
+
+         sr -> ~scalar_repeated<S,R> ( ); 
+
+         void* del = (void*) sr; 
+         operator delete( del ); 
+      }
+   }
+
+
+   template< typename S, typename R, std::convertible_to<R> R1 > 
+   scalar_repeated<S,R> * push_back( scalar_repeated<S,R> * sr, R1&& r )
+   {
+
+      if( sr -> nrrefs == 1 && sr -> ss < sr -> cc )
+      {
+         new ( sr->begin( ) + sr->ss ++ ) R( std::forward<R1> (r) );
+         return sr;
+      }
+
+      // Otherwise, life is a bit harder, because we have to reallocate.
+      // It is not certain that ( sr -> ss ) + 1 > ( sr -> cc ) because we may
+      // be reallocating due to sharing. 
+
+      // std::cout << "old: " << sr->ss << " " << sr->cc << "\n";
+
+      size_t cc_new = sr -> cc;
+      size_t ss_new = sr -> ss + 1;
+
+      if( cc_new < ss_new ) 
+         cc_new = ss_new << 1;
+
+      // std::cout << "new: " << ss_new << " " << cc_new << "\n";
+
+      auto* alloc = allocate<S,R> ( cc_new );
+
+      if( sr -> nrrefs == 1 )
+      {
+         // If sr is not sharing, we move from it: 
+
+         new (alloc) scalar_repeated<S,R> ( std::move( sr -> scal ), ss_new, cc_new );
+
+         auto to = alloc -> begin( );
+         for( auto from = sr -> begin( ); from != sr -> end( ); ++ from )
+            new ( to ++ ) R( std::move( *from ));
+
+         new( to ) R( std::forward<R1> (r) );
+      }
+      else
+      {
+         // If sr is sharing, we copy sr: 
+
+         new (alloc) scalar_repeated<S,R>( sr -> scal, ss_new, cc_new );
+
+         auto to = alloc -> begin( );
+         for( auto from = sr -> begin( ); from != sr -> end( ); ++ from ) 
+            new ( to ++ ) R( *from ); 
+
+         new( to ) R( std::forward<R1> (r) );
+      }
+
+      dropshare( sr ); 
+      return takeshare( alloc );  
+   }
+  
+    
+   template< typename S, typename R > 
+   scalar_repeated<S,R> * pop_back( scalar_repeated<S,R> * sr )
+   {
+      sr = replacebywritable(sr);
+      takeshare(sr);
+
+      -- sr -> ss; 
+      ( sr->begin( ) + sr->ss ) ->~R( );
+      return sr;  
+   }
+
+   template< typename S, typename R >
+   scalar_repeated<S,R> * clear( scalar_repeated<S,R> * sr )
+   {
+      if( sr -> nrrefs == 1 )
+      {
+         for( auto d = sr -> begin( ); d != sr -> end( ); ++ d )
+            d -> ~R( );
+
+         sr -> ss = 0;  
+         return sr; 
+      }
+      else
+      {
+         -- ( sr -> nrrefs );  
+                       // It cannot become zero, because we know it was > 1.  
+
+         auto* alloc = allocate<S,R> ( sr -> cc ); 
+         new (alloc) scalar_repeated<S,R>( sr -> scal, 0, sr -> cc ); 
+         return takeshare( alloc ); 
       }
    }
 

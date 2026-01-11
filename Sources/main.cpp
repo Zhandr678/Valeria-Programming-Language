@@ -11,7 +11,9 @@
 
 #include "argsconfig.h"
 #include "tvm/includes.h"
-#include "TreeGen/expr.h"
+#include "Statements/Expression.h"
+
+#ifndef RUN_TESTS
 
 int main(int argc, char* argv[])
 {
@@ -38,9 +40,12 @@ int main(int argc, char* argv[])
 		)
 	);
 
+	val::Expression e(val::IntLiteralExpr, 5);
+
+	std::cout << e.view_IntLiteral().extr_value();
+
 	std::cout << "Compilation Finished\n";
 	return 0;
 }
 
-// std::ifstream in("C:/Users/sagin/Desktop/exprog.val");
-// lexing::filereader f(&in, "C:/Users/sagin/Desktop/exprog.val");
+#endif

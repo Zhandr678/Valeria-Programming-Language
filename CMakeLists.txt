@@ -36,6 +36,10 @@ set_target_properties(Valeria_target PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
+# Refer to Project's Root as PROJECT_ROOT_DIR MACRO
+add_compile_definitions(PROJECT_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
+# define this to RUN TESTS
+# add_compile_definitions(RUN_TESTS)
 
 # For Linux: 
 

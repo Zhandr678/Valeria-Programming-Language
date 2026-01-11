@@ -3,12 +3,9 @@
 #include "Lexing/Lexer.h"
 #include <variant>
 
-import global_states;
-
-using Statement = std::variant <std::monostate>;
-
 namespace val 
 {
+	class Statement {};
 
 	class Parser
 	{
@@ -25,8 +22,8 @@ namespace val
 		std::optional <Statement> AnalyzeMakePropertyStatement();
 		std::optional <Statement> AnalyzeMakeEnumStatement();
 		std::optional <Statement> AnalyzeMatchStatement();
-		std::optional <Statement> AnalyzeFunctionCallStatement();
 		std::optional <Statement> AnalyzeExpressionStatement();
+
 	public:
 		explicit Parser(Lexer&& lexer);
 		

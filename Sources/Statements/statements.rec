@@ -1,0 +1,108 @@
+%dir ../Sources/Statements
+%namespace val
+
+// --------------- EXPRESSIONS ---------------
+
+%define Expression (EmptyExpr)
+
+%option EmptyLiteral { EmptyExpr } =>
+
+%option IntLiteral { IntLiteralExpr } =>
+    # value : int
+
+%option DoubleLiteral { DoubleLiteralExpr } =>
+    # value : double
+     
+%option BoolLiteral { BoolLiteralExpr } =>
+    # value : bool
+
+%option StringLiteral { StringLiteralExpr } =>
+    # value : std::string
+
+%option CharLiteral { CharLiteralExpr } =>
+    # value : char
+
+%option VarName { VarNameExpr } =>
+    # name : std::string
+
+%option FnCall { FnCallExpr } =>
+    [ args : Expression ], 
+    # fn_name : std::string
+
+%option Unary { UnaryExpr } =>
+    expr : Expression, 
+    # op : std::string
+
+%option Binary { BinaryExpr } =>
+    lhs : Expression, 
+    rhs : Expression, 
+    # op : std::string
+
+// --------------- STATEMENTS ---------------
+
+%define Statement (EmptyStmt)
+
+%option Empty { EmptyStmt } =>
+
+%option ExprCall { ExprCallStmt } =>
+    expr : Expression
+
+%option VarInit { VarInitStmt } =>
+    init_expr : Expression, 
+    # var_name : std::string, type_name : std::string
+
+// ASSERT Statement is VarInit
+%option MakeStruct { MakeStructStmt } =>
+    [ inits : Statement ],
+    # struct_name : std::string
+
+%option MakeEnum { MakeEnumStmt } =>
+    [ enum_variants : std::string ],
+    # enum_name : std::string
+
+%option FnArg { FnArgStmt } =>
+    default_expr : Expression,
+    # type_name : std::string, is_inout : bool, var_name : std::string
+
+%option MakeFunction { MakeFunctionStmt } =>
+    [ params : Statement, fn_body : Statement ],
+    # fn_name : std::string, ret_type_name : std::string
+
+// ASSERT Statement is MakeStruct
+%option MakeProperty { MakePropertyStmt } =>
+    [ opts : Statement ],
+    # prop_name : std::string
+
+%option ElifCondition { ElifConditionStmt } =>
+    elif_cond : Expression,
+    [ elif_body : Statement ]
+
+// ASSERT 2nd Statement is ElifCondition
+%option Condition { ConditionStmt } =>
+    if_cond : Expression,
+    [ if_body : Statement, elif_stmt : Statement, else_body : Statement ]
+
+%option ForLoop { ForLoopStmt } =>
+    init_part : Statement, 
+    check : Expression, 
+    final_expr : Expression,
+    [ forloop_body : Statement ]
+    
+%option WhileLoop { WhileLoopStmt } =>
+    cond : Expression,
+    [ whileloop_body : Statement ]
+    
+%option Return { ReturnStmt } =>
+    return_expr : Expression
+
+%option Break { BreakStmt } =>
+
+%option Continue { ContinueStmt } =>
+
+%option CaseClause { CaseClauseStmt } =>
+    [ case_body : Statement ],
+    # opt_name : std::string
+
+%option Match { MatchStmt } => 
+    [ cases : Statement ],
+    # var_name : std::string
