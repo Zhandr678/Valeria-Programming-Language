@@ -41,8 +41,9 @@ int main(int argc, char* argv[])
 	);
 
 	val::Expression e(val::IntLiteralExpr, 5);
+	val::Statement st(val::VarInitStmt, std::move(e), "a", "int");
 
-	std::cout << e.view_IntLiteral().extr_value();
+	std::cout << st.view_VarInit().extr_type_name();
 
 	std::cout << "Compilation Finished\n";
 	return 0;

@@ -378,4 +378,19 @@ namespace val
 		throw LexerException("Unknown Character", _CurLocation);
 	}
 
+	std::string Lexer::GetFileName() const
+	{
+		return inp.filename;
+	}
+
+	size_t Lexer::GetLine() const
+	{
+		return inp.line + 1;
+	}
+
+	size_t Lexer::GetColumn() const
+	{
+		return inp.column;
+	}
+
 }

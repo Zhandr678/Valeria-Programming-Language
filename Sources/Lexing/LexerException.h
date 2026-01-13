@@ -10,7 +10,7 @@ namespace val
 	class LexerException : public std::logic_error
 	{
 	public:
-		explicit LexerException(const std::string& msg, const std::string& filename, int line, int at);
+		explicit LexerException(const std::string& msg, const std::string& filename, size_t line, size_t at);
 		explicit LexerException(const std::string& msg, Location loc);
 		explicit LexerException(const std::string& msg);
 

@@ -1,20 +1,20 @@
 #pragma once
 
 #include "Lexing/Lexer.h"
+#include "Statements/Statement.h"
 #include <variant>
 
 namespace val 
 {
-	class Statement {};
-
 	class Parser
 	{
 	private:
 		Lexer lexer;
+		bool eof = false;
 
 		std::optional <Statement> AnalyzeInitalizationStatement();
 		std::optional <Statement> AnalyzeAssignmentStatement();
-		std::optional <Statement> AnalyzeIfElifElseStatement();
+		std::optional <Statement> AnalyzeConditionStatement();
 		std::optional <Statement> AnalyzeForLoopStatement();
 		std::optional <Statement> AnalyzeWhileLoopStatement();
 		std::optional <Statement> AnalyzeMakeFunctionStatement();

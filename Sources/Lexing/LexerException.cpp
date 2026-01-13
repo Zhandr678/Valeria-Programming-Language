@@ -3,22 +3,24 @@
 namespace val 
 {
 
-	LexerException::LexerException(const std::string& msg, const std::string& filename, int line, int at)
-		: std::logic_error("[" + msg + "] in " + filename + 
-			"\nline " + std::to_string(line) + 
-			"\nat " + std::to_string(at))
+	LexerException::LexerException(const std::string& msg, const std::string& filename, size_t line, size_t at)
+		: std::logic_error("LexerException: [" + msg + "] \
+			\n\tin File: [" + filename + "]" +
+			"\n\tline " + std::to_string(line) + 
+			"\n\tat " + std::to_string(at))
 	{
 	}
 
 	LexerException::LexerException(const std::string& msg, Location loc)
-		: std::logic_error("[" + msg + "] in " + loc.filename +
-			"\nline " + std::to_string(loc.line) +
-			"\nat " + std::to_string(loc.at))
+		: std::logic_error("LexerException: [" + msg + "] \
+			\n\tin File [" + loc.filename + "]" +
+			"\n\tline " + std::to_string(loc.line) +
+			"\n\tat " + std::to_string(loc.at))
 	{
 	}
 
 	LexerException::LexerException(const std::string& msg)
-		: std::logic_error("[" + msg + "]")
+		: std::logic_error("LexerException: [" + msg + "]")
 	{
 	}
 

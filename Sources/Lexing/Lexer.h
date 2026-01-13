@@ -35,6 +35,10 @@ namespace val
 
 		Token ReadAndClassifyNext();
 
+		std::string GetFileName() const;
+		size_t GetLine() const;
+		size_t GetColumn() const;
+
 		~Lexer() = default;
 	};
 
