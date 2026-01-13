@@ -3,16 +3,15 @@
 #include <string>
 #include <exception>
 
-#include "Statement/selector.h"
+#include "Statements/selector.h"
 
 namespace val 
 {
 
-	class ParserException
+	class ParserException : std::logic_error
 	{
 	public:
-		explicit ParserException(const std::string& msg, const std::string& filename, val::selector sel, size_t line);
-		explicit ParserException(const std::string& filename, val::selector sel, size_t line);
+		explicit ParserException(const std::string& msg, const std::string& filename, selector sel, size_t line);
 
 		ParserException() = default;
 		ParserException(const ParserException& other) = default;

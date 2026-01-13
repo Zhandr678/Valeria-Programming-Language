@@ -30,6 +30,8 @@ const char* val::getcstring( selector sel )
       return "UnaryExpr";
    case VarNameExpr :
       return "VarNameExpr";
+   case BlockOfStmt :
+      return "BlockOfStmt";
    case BreakStmt :
       return "BreakStmt";
    case ElifConditionStmt :
@@ -50,8 +52,8 @@ const char* val::getcstring( selector sel )
       return "MakePropertyStmt";
    case ExprCallStmt :
       return "ExprCallStmt";
-   case FnArgStmt :
-      return "FnArgStmt";
+   case FnArgsStmt :
+      return "FnArgsStmt";
    case MakeEnumStmt :
       return "MakeEnumStmt";
    case MakeFunctionStmt :

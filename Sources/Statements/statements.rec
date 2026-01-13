@@ -44,6 +44,9 @@
 
 %option Empty { EmptyStmt } =>
 
+%option Block { BlockOfStmt } =>
+    [ statements : Statement ]
+
 %option ExprCall { ExprCallStmt } =>
     expr : Expression
 
@@ -60,12 +63,14 @@
     [ enum_variants : std::string ],
     # enum_name : std::string
 
-%option FnArg { FnArgStmt } =>
+%option FnArgs { FnArgsStmt } =>
     default_expr : Expression,
     # type_name : std::string, is_inout : bool, var_name : std::string
 
+// ASSERT 1st Statement is Block, ASSERT 2nd Statement is FnArgs
 %option MakeFunction { MakeFunctionStmt } =>
-    [ params : Statement, fn_body : Statement ],
+    fn_body : Statement,
+    [ params : Statement ],
     # fn_name : std::string, ret_type_name : std::string
 
 // ASSERT Statement is MakeStruct
@@ -73,24 +78,29 @@
     [ opts : Statement ],
     # prop_name : std::string
 
+// ASSERT Statement is Block
 %option ElifCondition { ElifConditionStmt } =>
     elif_cond : Expression,
-    [ elif_body : Statement ]
+    elif_body : Statement
 
-// ASSERT 2nd Statement is ElifCondition
+// ASSERT 1st Statement is Block, ASSERT 2nd Statement is Block, ASSERT 3rd Statement is ElifCondition
 %option Condition { ConditionStmt } =>
     if_cond : Expression,
-    [ if_body : Statement, elif_stmt : Statement, else_body : Statement ]
+    if_body : Statement,
+    else_body : Statement,
+    [ elif_stmt : Statement ]
 
+// ASSERT 2nd Statement is Block
 %option ForLoop { ForLoopStmt } =>
     init_part : Statement, 
     check : Expression, 
     final_expr : Expression,
-    [ forloop_body : Statement ]
+    forloop_body : Statement
     
+// ASSERT Statement is Block
 %option WhileLoop { WhileLoopStmt } =>
     cond : Expression,
-    [ whileloop_body : Statement ]
+    whileloop_body : Statement
     
 %option Return { ReturnStmt } =>
     return_expr : Expression

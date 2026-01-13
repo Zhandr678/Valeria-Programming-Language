@@ -3,6 +3,8 @@
 #include "Lexing/Lexer.h"
 #include "Statements/Statement.h"
 #include <variant>
+#include <vector>
+#include <queue>
 
 namespace val 
 {
@@ -11,6 +13,14 @@ namespace val
 	private:
 		Lexer lexer;
 		bool eof = false;
+
+		std::vector <Token> peeked;
+		size_t next;
+
+		std::queue <Statement> pending;
+
+		Token GetNextImportantToken();
+		Token GetNextPeeked();
 
 		std::optional <Statement> AnalyzeInitalizationStatement();
 		std::optional <Statement> AnalyzeAssignmentStatement();
@@ -35,6 +45,10 @@ namespace val
 		Parser& operator=(Parser&& parser) noexcept;
 
 		Statement GetNextStatement();
+
+		std::string GetFileName() const;
+		size_t GetLine() const;
+		size_t GetColumn() const;
 
 		~Parser() = default;
 	};
