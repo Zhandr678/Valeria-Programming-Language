@@ -26,20 +26,24 @@ val::Expression::Expression( const Expression& from )
       break;
    case EmptyExpr:
       break;
-   case FnCallExpr:
-      tvm::init( repr. _fld05. loc, from. repr. _fld05. loc );
+   case FieldCallExpr:
       repr. _fld05. heap = takeshare( from. repr. _fld05. heap );
       break;
-   case IntLiteralExpr:
+   case FnCallExpr:
+   case StructInitExpr:
       tvm::init( repr. _fld06. loc, from. repr. _fld06. loc );
+      repr. _fld06. heap = takeshare( from. repr. _fld06. heap );
+      break;
+   case IntLiteralExpr:
+      tvm::init( repr. _fld07. loc, from. repr. _fld07. loc );
       break;
    case StringLiteralExpr:
    case VarNameExpr:
-      tvm::init( repr. _fld07. loc, from. repr. _fld07. loc );
+      tvm::init( repr. _fld08. loc, from. repr. _fld08. loc );
       break;
    case UnaryExpr:
-      tvm::init( repr. _fld08. loc, from. repr. _fld08. loc );
-      repr. _fld08. heap = takeshare( from. repr. _fld08. heap );
+      tvm::init( repr. _fld09. loc, from. repr. _fld09. loc );
+      repr. _fld09. heap = takeshare( from. repr. _fld09. heap );
       break;
    }
 }
@@ -70,24 +74,28 @@ val::Expression::Expression( Expression&& from ) noexcept
       break;
    case EmptyExpr:
       break;
-   case FnCallExpr:
-      tvm::init( repr. _fld05. loc, std::move( from. repr. _fld05. loc ) );
-      tvm::destroy( from. repr. _fld05. loc );
+   case FieldCallExpr:
       repr. _fld05. heap = from. repr. _fld05. heap;
       break;
-   case IntLiteralExpr:
+   case FnCallExpr:
+   case StructInitExpr:
       tvm::init( repr. _fld06. loc, std::move( from. repr. _fld06. loc ) );
       tvm::destroy( from. repr. _fld06. loc );
+      repr. _fld06. heap = from. repr. _fld06. heap;
       break;
-   case StringLiteralExpr:
-   case VarNameExpr:
+   case IntLiteralExpr:
       tvm::init( repr. _fld07. loc, std::move( from. repr. _fld07. loc ) );
       tvm::destroy( from. repr. _fld07. loc );
       break;
-   case UnaryExpr:
+   case StringLiteralExpr:
+   case VarNameExpr:
       tvm::init( repr. _fld08. loc, std::move( from. repr. _fld08. loc ) );
       tvm::destroy( from. repr. _fld08. loc );
-      repr. _fld08. heap = from. repr. _fld08. heap;
+      break;
+   case UnaryExpr:
+      tvm::init( repr. _fld09. loc, std::move( from. repr. _fld09. loc ) );
+      tvm::destroy( from. repr. _fld09. loc );
+      repr. _fld09. heap = from. repr. _fld09. heap;
       break;
    }
 
@@ -111,11 +119,15 @@ const val::Expression & val::Expression::operator = ( const Expression& from )
    case BinaryExpr:
       takeshare( from. repr. _fld00. heap );
       break;
-   case FnCallExpr:
+   case FieldCallExpr:
       takeshare( from. repr. _fld05. heap );
       break;
+   case FnCallExpr:
+   case StructInitExpr:
+      takeshare( from. repr. _fld06. heap );
+      break;
    case UnaryExpr:
-      takeshare( from. repr. _fld08. heap );
+      takeshare( from. repr. _fld09. heap );
       break;
    }
 
@@ -140,20 +152,24 @@ const val::Expression & val::Expression::operator = ( const Expression& from )
       break;
    case EmptyExpr:
       break;
-   case FnCallExpr:
-      tvm::init( repr. _fld05. loc, from. repr. _fld05. loc );
+   case FieldCallExpr:
       repr. _fld05. heap = from. repr. _fld05. heap;
       break;
-   case IntLiteralExpr:
+   case FnCallExpr:
+   case StructInitExpr:
       tvm::init( repr. _fld06. loc, from. repr. _fld06. loc );
+      repr. _fld06. heap = from. repr. _fld06. heap;
+      break;
+   case IntLiteralExpr:
+      tvm::init( repr. _fld07. loc, from. repr. _fld07. loc );
       break;
    case StringLiteralExpr:
    case VarNameExpr:
-      tvm::init( repr. _fld07. loc, from. repr. _fld07. loc );
+      tvm::init( repr. _fld08. loc, from. repr. _fld08. loc );
       break;
    case UnaryExpr:
-      tvm::init( repr. _fld08. loc, from. repr. _fld08. loc );
-      repr. _fld08. heap = from. repr. _fld08. heap;
+      tvm::init( repr. _fld09. loc, from. repr. _fld09. loc );
+      repr. _fld09. heap = from. repr. _fld09. heap;
       break;
    }
 
@@ -188,26 +204,31 @@ const val::Expression & val::Expression::operator = ( Expression&& from ) noexce
          break;
       case EmptyExpr:
          break;
-      case FnCallExpr:
-         tvm::assign( repr. _fld05. loc, std::move( from. repr. _fld05. loc ) );
-         tvm::destroy( from. repr. _fld05. loc );
+      case FieldCallExpr:
          dropshare( repr. _fld05. heap );
          repr. _fld05. heap = from. repr. _fld05. heap;
          break;
-      case IntLiteralExpr:
+      case FnCallExpr:
+      case StructInitExpr:
          tvm::assign( repr. _fld06. loc, std::move( from. repr. _fld06. loc ) );
          tvm::destroy( from. repr. _fld06. loc );
+         dropshare( repr. _fld06. heap );
+         repr. _fld06. heap = from. repr. _fld06. heap;
          break;
-      case StringLiteralExpr:
-      case VarNameExpr:
+      case IntLiteralExpr:
          tvm::assign( repr. _fld07. loc, std::move( from. repr. _fld07. loc ) );
          tvm::destroy( from. repr. _fld07. loc );
          break;
-      case UnaryExpr:
+      case StringLiteralExpr:
+      case VarNameExpr:
          tvm::assign( repr. _fld08. loc, std::move( from. repr. _fld08. loc ) );
          tvm::destroy( from. repr. _fld08. loc );
-         dropshare( repr. _fld08. heap );
-         repr. _fld08. heap = from. repr. _fld08. heap;
+         break;
+      case UnaryExpr:
+         tvm::assign( repr. _fld09. loc, std::move( from. repr. _fld09. loc ) );
+         tvm::destroy( from. repr. _fld09. loc );
+         dropshare( repr. _fld09. heap );
+         repr. _fld09. heap = from. repr. _fld09. heap;
          break;
       }
 
@@ -250,20 +271,24 @@ val::Expression::~Expression( ) noexcept
       break;
    case EmptyExpr:
       break;
-   case FnCallExpr:
-      tvm::destroy( repr. _fld05. loc );
+   case FieldCallExpr:
       dropshare( repr. _fld05. heap );
       break;
-   case IntLiteralExpr:
+   case FnCallExpr:
+   case StructInitExpr:
       tvm::destroy( repr. _fld06. loc );
+      dropshare( repr. _fld06. heap );
+      break;
+   case IntLiteralExpr:
+      tvm::destroy( repr. _fld07. loc );
       break;
    case StringLiteralExpr:
    case VarNameExpr:
-      tvm::destroy( repr. _fld07. loc );
+      tvm::destroy( repr. _fld08. loc );
       break;
    case UnaryExpr:
-      tvm::destroy( repr. _fld08. loc );
-      dropshare( repr. _fld08. heap );
+      tvm::destroy( repr. _fld09. loc );
+      dropshare( repr. _fld09. heap );
       break;
    }
 }
@@ -295,25 +320,30 @@ bool val::Expression::very_equal_to( const Expression & other ) const
       return true;
    case EmptyExpr:
       return true;
-   case FnCallExpr:
-      if( tvm::distinct( repr. _fld05. loc, other. repr. _fld05. loc ))
-         return false;
+   case FieldCallExpr:
       if( repr. _fld05. heap != other. repr. _fld05. heap )
          return false;
       return true;
-   case IntLiteralExpr:
+   case FnCallExpr:
+   case StructInitExpr:
       if( tvm::distinct( repr. _fld06. loc, other. repr. _fld06. loc ))
+         return false;
+      if( repr. _fld06. heap != other. repr. _fld06. heap )
+         return false;
+      return true;
+   case IntLiteralExpr:
+      if( tvm::distinct( repr. _fld07. loc, other. repr. _fld07. loc ))
          return false;
       return true;
    case StringLiteralExpr:
    case VarNameExpr:
-      if( tvm::distinct( repr. _fld07. loc, other. repr. _fld07. loc ))
+      if( tvm::distinct( repr. _fld08. loc, other. repr. _fld08. loc ))
          return false;
       return true;
    case UnaryExpr:
-      if( tvm::distinct( repr. _fld08. loc, other. repr. _fld08. loc ))
+      if( tvm::distinct( repr. _fld09. loc, other. repr. _fld09. loc ))
          return false;
-      if( repr. _fld08. heap != other. repr. _fld08. heap )
+      if( repr. _fld09. heap != other. repr. _fld09. heap )
          return false;
       return true;
    }
@@ -326,11 +356,15 @@ void val::Expression::printstate( std::ostream& out ) const
    case BinaryExpr:
       tvm::printstate( repr. _fld00. heap, out );
       break;
-   case FnCallExpr:
+   case FieldCallExpr:
       tvm::printstate( repr. _fld05. heap, out );
       break;
+   case FnCallExpr:
+   case StructInitExpr:
+      tvm::printstate( repr. _fld06. heap, out );
+      break;
    case UnaryExpr:
-      tvm::printstate( repr. _fld08. heap, out );
+      tvm::printstate( repr. _fld09. heap, out );
       break;
    }
 }

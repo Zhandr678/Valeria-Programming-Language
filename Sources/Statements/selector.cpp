@@ -16,8 +16,8 @@ const char* val::getcstring( selector sel )
       return "CharLiteralExpr";
    case DoubleLiteralExpr :
       return "DoubleLiteralExpr";
-   case StringLiteralExpr :
-      return "StringLiteralExpr";
+   case FieldCallExpr :
+      return "FieldCallExpr";
    case EmptyExpr :
       return "EmptyExpr";
    case VarInitStmt :
@@ -26,6 +26,10 @@ const char* val::getcstring( selector sel )
       return "FnCallExpr";
    case IntLiteralExpr :
       return "IntLiteralExpr";
+   case StringLiteralExpr :
+      return "StringLiteralExpr";
+   case StructInitExpr :
+      return "StructInitExpr";
    case UnaryExpr :
       return "UnaryExpr";
    case VarNameExpr :

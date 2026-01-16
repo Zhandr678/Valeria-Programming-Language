@@ -1,7 +1,6 @@
-double i;
+int a = 5 + 5;
+b = a + 2;
 
-property prop
-{
-	opt: { int a; };
-	opt2: { double b; int c; };
-}
+if (b==12){b=b+5;}
+
+if (g) {}

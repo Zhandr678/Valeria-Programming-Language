@@ -25,6 +25,14 @@
 %option VarName { VarNameExpr } =>
     # name : std::string
 
+%option FieldCall { FieldCallExpr } =>
+    caller : Expression, 
+    field : Expression
+
+%option StructInit { StructInitExpr } =>
+    [ inits : Expression ],
+    # struct_name : std::string
+
 %option FnCall { FnCallExpr } =>
     [ args : Expression ], 
     # fn_name : std::string

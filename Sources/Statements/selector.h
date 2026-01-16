@@ -13,13 +13,13 @@ namespace val {
    enum selector
    {      
       BinaryExpr, BoolLiteralExpr, CharLiteralExpr, DoubleLiteralExpr, 
-      StringLiteralExpr, EmptyExpr, VarInitStmt, FnCallExpr, 
-      IntLiteralExpr, UnaryExpr, VarNameExpr, BreakStmt, 
-      AssignmentStmt, BlockOfStmt, ElifConditionStmt, ContinueStmt, 
-      CaseClauseStmt, EmptyStmt, ForLoopStmt, MakeStructStmt, 
-      ConditionStmt, MakePropertyStmt, ExprCallStmt, FnArgsStmt, 
-      MakeEnumStmt, MakeFunctionStmt, MatchStmt, ReturnStmt, 
-      WhileLoopStmt
+      FieldCallExpr, EmptyExpr, VarInitStmt, FnCallExpr, 
+      IntLiteralExpr, StringLiteralExpr, StructInitExpr, UnaryExpr, 
+      VarNameExpr, BreakStmt, AssignmentStmt, BlockOfStmt, 
+      ElifConditionStmt, ContinueStmt, CaseClauseStmt, EmptyStmt, 
+      ForLoopStmt, MakeStructStmt, ConditionStmt, MakePropertyStmt, 
+      ExprCallStmt, FnArgsStmt, MakeEnumStmt, MakeFunctionStmt, 
+      MatchStmt, ReturnStmt, WhileLoopStmt
    };
 
    const char* getcstring( selector );
