@@ -1,5 +1,1 @@
-int a = 5 + 5 * 5
-property prop
-{
-	opt1: {};
-}
+Summarize.sum = 5;

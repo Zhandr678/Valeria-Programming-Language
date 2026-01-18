@@ -58,9 +58,10 @@
 %option ExprCall { ExprCallStmt } =>
     expr : Expression
 
+// ASSERT 2nd Expression is VarName or FieldCall
 %option Assignment { AssignmentStmt } =>
     expr : Expression,
-    # var_name : std::string
+    dest : Expression
 
 %option VarInit { VarInitStmt } =>
     init_expr : Expression, 
@@ -106,7 +107,7 @@
 %option ForLoop { ForLoopStmt } =>
     init_part : Statement, 
     check : Expression, 
-    final_expr : Expression,
+    final_expr : Statement,
     forloop_body : Statement
     
 // ASSERT Statement is Block

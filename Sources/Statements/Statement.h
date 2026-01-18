@@ -21,8 +21,8 @@ namespace val {
    private:
       selector _ssss;
 
-      using _loc00 = std::string;
-      using _scal00 = Expression;
+      using _loc00 = tvm::unit;
+      using _scal00 = std::pair<Expression,Expression>;
       using _rep00 = tvm::unit;
       using _loc01 = tvm::unit;
       using _scal01 = tvm::unit;
@@ -46,7 +46,7 @@ namespace val {
       using _scal07 = Expression;
       using _rep07 = tvm::unit;
       using _loc08 = tvm::unit;
-      using _scal08 = std::tuple<Statement,Expression,Expression,Statement>;
+      using _scal08 = std::tuple<Statement,Expression,Statement,Statement>;
       using _rep08 = tvm::unit;
       using _loc09 = std::string;
       using _scal09 = tvm::unit;
@@ -98,7 +98,7 @@ namespace val {
       bool very_equal_to( const Statement& ) const;
       void printstate( std::ostream& out ) const;
       
-      Statement( selector sel, const Expression & _xx00, const std::string & _xx01 )
+      Statement( selector sel, const Expression & _xx00, const Expression & _xx01 )
          : _ssss( sel )
       {
          if constexpr( check )
@@ -111,8 +111,7 @@ namespace val {
                throw std::invalid_argument( "wrong selector for constructor" );
             }
          }
-         tvm::init( repr. _fld00. loc, _xx01 );
-         repr. _fld00. heap = takeshare( tvm::constr_scalar< _scal00 > ( _xx00 ));
+         repr. _fld00. heap = takeshare( tvm::constr_scalar< _scal00 > ( std::pair( _xx00, _xx01 ) ));
       }
 
       template< tvm::const_iterator< _rep01 > It >
@@ -244,7 +243,7 @@ namespace val {
          repr. _fld07. heap = takeshare( tvm::constr_scalar< _scal07 > ( _xx00 ));
       }
 
-      Statement( selector sel, const Statement & _xx00, const Expression & _xx01, const Expression & _xx02, const Statement & _xx03 )
+      Statement( selector sel, const Statement & _xx00, const Expression & _xx01, const Statement & _xx02, const Statement & _xx03 )
          : _ssss( sel )
       {
          if constexpr( check )
@@ -364,9 +363,8 @@ namespace val {
          const Statement & operator * ( ) const { return * _xxxx; }
          const_Assignment( const Statement* _xxxx ) : _xxxx( _xxxx ) { }
 
-         const std::string & var_name( ) const { return _xxxx -> repr. _fld00. loc; }
-
-         const Expression & expr( ) const { return _xxxx -> repr. _fld00. heap -> scal; }
+         const Expression & expr( ) const { return _xxxx -> repr. _fld00. heap -> scal. first; }
+         const Expression & dest( ) const { return _xxxx -> repr. _fld00. heap -> scal. second; }
       };
 
       const_Assignment view_Assignment( ) const
@@ -385,23 +383,34 @@ namespace val {
          mut_Assignment( Statement* _xxxx ) : _xxxx( _xxxx ) { }
          const Statement & operator * ( ) const { return * _xxxx; }
 
-         std::string & var_name( ) const { return _xxxx -> repr. _fld00. loc; }
-         std::string extr_var_name( ) const { return std::move( _xxxx -> repr. _fld00. loc ); }
-         void update_var_name( const std::string & from ) const { _xxxx -> repr. _fld00. loc = from; }
-
-         const Expression & expr( ) const { return _xxxx -> repr. _fld00. heap -> scal; }
+         const Expression & expr( ) const { return _xxxx -> repr. _fld00. heap -> scal. first; }
          Expression extr_expr( ) const {
             if( iswritable( _xxxx -> repr. _fld00. heap ))
-               return std::move( _xxxx -> repr. _fld00. heap -> scal );
+               return std::move( _xxxx -> repr. _fld00. heap -> scal. first );
             else
-               return _xxxx -> repr. _fld00. heap -> scal;
+               return _xxxx -> repr. _fld00. heap -> scal. first;
          }
          void update_expr( const Expression & repl ) const
          {
-            if( tvm::distinct( _xxxx -> repr. _fld00. heap -> scal, repl ))
+            if( tvm::distinct( _xxxx -> repr. _fld00. heap -> scal. first, repl ))
             {
                _xxxx -> repr. _fld00. heap = takeshare( replacebywritable( _xxxx -> repr. _fld00. heap ));
-               _xxxx -> repr. _fld00. heap -> scal = repl;
+               _xxxx -> repr. _fld00. heap -> scal. first = repl;
+            }
+         }
+         const Expression & dest( ) const { return _xxxx -> repr. _fld00. heap -> scal. second; }
+         Expression extr_dest( ) const {
+            if( iswritable( _xxxx -> repr. _fld00. heap ))
+               return std::move( _xxxx -> repr. _fld00. heap -> scal. second );
+            else
+               return _xxxx -> repr. _fld00. heap -> scal. second;
+         }
+         void update_dest( const Expression & repl ) const
+         {
+            if( tvm::distinct( _xxxx -> repr. _fld00. heap -> scal. second, repl ))
+            {
+               _xxxx -> repr. _fld00. heap = takeshare( replacebywritable( _xxxx -> repr. _fld00. heap ));
+               _xxxx -> repr. _fld00. heap -> scal. second = repl;
             }
          }
       };
@@ -1052,7 +1061,7 @@ namespace val {
 
          const Statement & init_part( ) const { return get<0> ( _xxxx -> repr. _fld08. heap -> scal ); }
          const Expression & check( ) const { return get<1> ( _xxxx -> repr. _fld08. heap -> scal ); }
-         const Expression & final_expr( ) const { return get<2> ( _xxxx -> repr. _fld08. heap -> scal ); }
+         const Statement & final_expr( ) const { return get<2> ( _xxxx -> repr. _fld08. heap -> scal ); }
          const Statement & forloop_body( ) const { return get<3> ( _xxxx -> repr. _fld08. heap -> scal ); }
       };
 
@@ -1102,14 +1111,14 @@ namespace val {
                get<1> ( _xxxx -> repr. _fld08. heap -> scal ) = repl;
             }
          }
-         const Expression & final_expr( ) const { return get<2> ( _xxxx -> repr. _fld08. heap -> scal ); }
-         Expression extr_final_expr( ) const {
+         const Statement & final_expr( ) const { return get<2> ( _xxxx -> repr. _fld08. heap -> scal ); }
+         Statement extr_final_expr( ) const {
             if( iswritable( _xxxx -> repr. _fld08. heap ))
                return std::move( get<2> ( _xxxx -> repr. _fld08. heap -> scal ) );
             else
                return get<2> ( _xxxx -> repr. _fld08. heap -> scal );
          }
-         void update_final_expr( const Expression & repl ) const
+         void update_final_expr( const Statement & repl ) const
          {
             if( tvm::distinct( get<2> ( _xxxx -> repr. _fld08. heap -> scal ), repl ))
             {

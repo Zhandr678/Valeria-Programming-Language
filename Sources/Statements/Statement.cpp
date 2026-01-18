@@ -12,7 +12,6 @@ val::Statement::Statement( const Statement& from )
    switch( from. _ssss )
    {
    case AssignmentStmt:
-      tvm::init( repr. _fld00. loc, from. repr. _fld00. loc );
       repr. _fld00. heap = takeshare( from. repr. _fld00. heap );
       break;
    case BlockOfStmt:
@@ -77,8 +76,6 @@ val::Statement::Statement( Statement&& from ) noexcept
    switch( from. _ssss )
    {
    case AssignmentStmt:
-      tvm::init( repr. _fld00. loc, std::move( from. repr. _fld00. loc ) );
-      tvm::destroy( from. repr. _fld00. loc );
       repr. _fld00. heap = from. repr. _fld00. heap;
       break;
    case BlockOfStmt:
@@ -210,7 +207,6 @@ const val::Statement & val::Statement::operator = ( const Statement& from )
    switch( _ssss )
    {
    case AssignmentStmt:
-      tvm::init( repr. _fld00. loc, from. repr. _fld00. loc );
       repr. _fld00. heap = from. repr. _fld00. heap;
       break;
    case BlockOfStmt:
@@ -278,8 +274,6 @@ const val::Statement & val::Statement::operator = ( Statement&& from ) noexcept
       switch( _ssss )
       {
       case AssignmentStmt:
-         tvm::assign( repr. _fld00. loc, std::move( from. repr. _fld00. loc ) );
-         tvm::destroy( from. repr. _fld00. loc );
          dropshare( repr. _fld00. heap );
          repr. _fld00. heap = from. repr. _fld00. heap;
          break;
@@ -382,7 +376,6 @@ val::Statement::~Statement( ) noexcept
    switch( _ssss )
    {
    case AssignmentStmt:
-      tvm::destroy( repr. _fld00. loc );
       dropshare( repr. _fld00. heap );
       break;
    case BlockOfStmt:
@@ -447,8 +440,6 @@ bool val::Statement::very_equal_to( const Statement & other ) const
    switch( _ssss )
    {
    case AssignmentStmt:
-      if( tvm::distinct( repr. _fld00. loc, other. repr. _fld00. loc ))
-         return false;
       if( repr. _fld00. heap != other. repr. _fld00. heap )
          return false;
       return true;

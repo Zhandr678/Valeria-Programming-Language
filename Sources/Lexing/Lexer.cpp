@@ -209,7 +209,7 @@ namespace val
 		TokenLabel label = TokenLabel::IDENTIFIER;
 
 		// Keywords
-		if (text == "int")      label = TokenLabel::KW_INT;
+		if (text == "int")           label = TokenLabel::KW_INT;
 		else if (text == "double")   label = TokenLabel::KW_DOUBLE;
 		else if (text == "string")   label = TokenLabel::KW_STRING;
 		else if (text == "bool")     label = TokenLabel::KW_BOOL;
@@ -222,6 +222,9 @@ namespace val
 
 		else if (text == "for")      label = TokenLabel::KW_FOR;
 		else if (text == "while")    label = TokenLabel::KW_WHILE;
+
+		else if (text == "continue") label = TokenLabel::KW_CONTINUE;
+		else if (text == "break")    label = TokenLabel::KW_BREAK;
 
 		else if (text == "struct")   label = TokenLabel::KW_STRUCT;
 		else if (text == "enum")     label = TokenLabel::KW_ENUM;
