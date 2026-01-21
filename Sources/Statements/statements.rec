@@ -25,8 +25,12 @@
 %option VarName { VarNameExpr } =>
     # name : std::string
 
-%option ArrayIndex { ArrayIndex } =>
-    # var_name : std::string, at : int
+%option ArrayIndex { ArrayIndexExpr } =>
+    array_expr : Expression,
+    at : Expression
+
+%option InitList { InitListExpr } =>
+    [ exprs : Expression ]
 
 %option FieldCall { FieldCallExpr } =>
     caller : Expression, 
@@ -61,10 +65,16 @@
 %option ExprCall { ExprCallStmt } =>
     expr : Expression
 
-// ASSERT 2nd Expression is VarName or FieldCall
+// ASSERT 2nd Expression is VarName or FieldCall or ArrayIndex
 %option Assignment { AssignmentStmt } =>
     expr : Expression,
     dest : Expression
+
+// ASSERT Statement is VarInit (1D array) or ArrayInit (2D, 3D, ... arrays)
+%option ArrayInit { ArrayInitStmt } =>
+    init_expr : Expression,
+    type_info : Statement,
+    alloc_size : Expression
 
 %option VarInit { VarInitStmt } =>
     init_expr : Expression, 

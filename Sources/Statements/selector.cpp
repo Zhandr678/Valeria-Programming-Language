@@ -8,16 +8,8 @@ const char* val::getcstring( selector sel )
 {
    switch( sel )
    {
-   case ElifConditionStmt :
-      return "ElifConditionStmt";
-   case ContinueStmt :
-      return "ContinueStmt";
-   case ArrayIndex :
-      return "ArrayIndex";
-   case VarInitStmt :
-      return "VarInitStmt";
-   case FnCallExpr :
-      return "FnCallExpr";
+   case ArrayIndexExpr :
+      return "ArrayIndexExpr";
    case BinaryExpr :
       return "BinaryExpr";
    case BoolLiteralExpr :
@@ -30,6 +22,12 @@ const char* val::getcstring( selector sel )
       return "FieldCallExpr";
    case EmptyExpr :
       return "EmptyExpr";
+   case VarInitStmt :
+      return "VarInitStmt";
+   case FnCallExpr :
+      return "FnCallExpr";
+   case InitListExpr :
+      return "InitListExpr";
    case IntLiteralExpr :
       return "IntLiteralExpr";
    case StringLiteralExpr :
@@ -40,24 +38,30 @@ const char* val::getcstring( selector sel )
       return "UnaryExpr";
    case VarNameExpr :
       return "VarNameExpr";
+   case ElifConditionStmt :
+      return "ElifConditionStmt";
+   case ContinueStmt :
+      return "ContinueStmt";
+   case CaseClauseStmt :
+      return "CaseClauseStmt";
+   case ArrayInitStmt :
+      return "ArrayInitStmt";
    case BreakStmt :
       return "BreakStmt";
    case AssignmentStmt :
       return "AssignmentStmt";
    case BlockOfStmt :
       return "BlockOfStmt";
-   case CaseClauseStmt :
-      return "CaseClauseStmt";
+   case ConditionStmt :
+      return "ConditionStmt";
+   case MakePropertyStmt :
+      return "MakePropertyStmt";
    case EmptyStmt :
       return "EmptyStmt";
    case ForLoopStmt :
       return "ForLoopStmt";
    case MakeStructStmt :
       return "MakeStructStmt";
-   case ConditionStmt :
-      return "ConditionStmt";
-   case MakePropertyStmt :
-      return "MakePropertyStmt";
    case ExprCallStmt :
       return "ExprCallStmt";
    case FnArgsStmt :

@@ -34,7 +34,6 @@ namespace val
 		std::optional <Statement> AnalyzeLoopCommands();
 		std::optional <Statement> ParseForLoopFinalStatement();
 		
-		Expression ParseFieldCall();
 		std::optional <Expression> ParseExpression(TokenLabel flag1, TokenLabel flag2);
 
 	public:

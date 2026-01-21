@@ -43,11 +43,11 @@ int main(int argc, char* argv[])
 
 		auto AST = parser.ConstructAST();
 
-		std::cout << AST.view_Block().statements(0).view_Match().cases(0).view_CaseClause().is_wildcard();
+		//std::cout << AST.view_Block().statements(1).view_Block().statements(0).view_VarInit().init_expr().view_FieldCall().caller().view_StructInit().struct_name();
 	}
 	catch (const std::logic_error& e)
 	{
-		std::cout << "Error" << e.what();
+		std::cout << "Error: " << e.what();
 	}
 
 	return 0;

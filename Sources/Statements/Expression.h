@@ -21,8 +21,8 @@ namespace val {
    private:
       selector _ssss;
 
-      using _loc00 = std::pair<std::string,int>;
-      using _scal00 = tvm::unit;
+      using _loc00 = tvm::unit;
+      using _scal00 = std::pair<Expression,Expression>;
       using _rep00 = tvm::unit;
       using _loc01 = std::string;
       using _scal01 = std::pair<Expression,Expression>;
@@ -39,10 +39,10 @@ namespace val {
       using _loc05 = tvm::unit;
       using _scal05 = tvm::unit;
       using _rep05 = tvm::unit;
-      using _loc06 = tvm::unit;
-      using _scal06 = std::pair<Expression,Expression>;
-      using _rep06 = tvm::unit;
-      using _loc07 = std::string;
+      using _loc06 = std::string;
+      using _scal06 = tvm::unit;
+      using _rep06 = Expression;
+      using _loc07 = tvm::unit;
       using _scal07 = tvm::unit;
       using _rep07 = Expression;
       using _loc08 = int;
@@ -90,21 +90,21 @@ namespace val {
       bool very_equal_to( const Expression& ) const;
       void printstate( std::ostream& out ) const;
       
-      Expression( selector sel, const std::string & _xx00, const int & _xx01 )
+      Expression( selector sel, const Expression & _xx00, const Expression & _xx01 )
          : _ssss( sel )
       {
          if constexpr( check )
          {
             switch( _ssss )
             {
-            case ArrayIndex:
+            case ArrayIndexExpr:
+            case FieldCallExpr:
                break;
             default:
                throw std::invalid_argument( "wrong selector for constructor" );
             }
          }
-         tvm::init( repr. _fld00. loc. first, _xx00 );
-         tvm::init( repr. _fld00. loc. second, _xx01 );
+         repr. _fld00. heap = takeshare( tvm::constr_scalar< _scal00 > ( std::pair( _xx00, _xx01 ) ));
       }
 
       Expression( selector sel, const Expression & _xx00, const Expression & _xx01, const std::string & _xx02 )
@@ -187,23 +187,7 @@ namespace val {
          }
       }
 
-      Expression( selector sel, const Expression & _xx00, const Expression & _xx01 )
-         : _ssss( sel )
-      {
-         if constexpr( check )
-         {
-            switch( _ssss )
-            {
-            case FieldCallExpr:
-               break;
-            default:
-               throw std::invalid_argument( "wrong selector for constructor" );
-            }
-         }
-         repr. _fld06. heap = takeshare( tvm::constr_scalar< _scal06 > ( std::pair( _xx00, _xx01 ) ));
-      }
-
-      template< tvm::const_iterator< _rep07 > It >
+      template< tvm::const_iterator< _rep06 > It >
       Expression( selector sel, It begin, It end, const std::string & _xx02 )
          : _ssss( sel )
       {
@@ -218,12 +202,33 @@ namespace val {
                throw std::invalid_argument( "wrong selector for constructor" );
             }
          }
-         tvm::init( repr. _fld07. loc, _xx02 );
+         tvm::init( repr. _fld06. loc, _xx02 );
+         repr. _fld06. heap = takeshare( tvm::constr_scalar_repeated< _scal06, _rep06 > ( tvm::unit( ), begin, end ));
+      }
+
+      Expression( selector sel, std::initializer_list< _rep06 > repeated, const std::string & _xx01 )
+         : Expression( sel, repeated. begin( ), repeated. end( ), _xx01 )
+      { }
+
+      template< tvm::const_iterator< _rep07 > It >
+      Expression( selector sel, It begin, It end )
+         : _ssss( sel )
+      {
+         if constexpr( check )
+         {
+            switch( _ssss )
+            {
+            case InitListExpr:
+               break;
+            default:
+               throw std::invalid_argument( "wrong selector for constructor" );
+            }
+         }
          repr. _fld07. heap = takeshare( tvm::constr_scalar_repeated< _scal07, _rep07 > ( tvm::unit( ), begin, end ));
       }
 
-      Expression( selector sel, std::initializer_list< _rep07 > repeated, const std::string & _xx01 )
-         : Expression( sel, repeated. begin( ), repeated. end( ), _xx01 )
+      Expression( selector sel, std::initializer_list< _rep07 > repeated )
+         : Expression( sel, repeated. begin( ), repeated. end( ) )
       { }
 
       Expression( selector sel, const int & _xx00 )
@@ -280,7 +285,7 @@ namespace val {
       {
          switch( _ssss )
          {
-         case ArrayIndex:
+         case ArrayIndexExpr:
             return true;
          default:
             return false;
@@ -293,8 +298,8 @@ namespace val {
          const Expression & operator * ( ) const { return * _xxxx; }
          const_ArrayIndex( const Expression* _xxxx ) : _xxxx( _xxxx ) { }
 
-         const std::string & var_name( ) const { return _xxxx -> repr. _fld00. loc. first; }
-         const int & at( ) const { return _xxxx -> repr. _fld00. loc. second; }
+         const Expression & array_expr( ) const { return _xxxx -> repr. _fld00. heap -> scal. first; }
+         const Expression & at( ) const { return _xxxx -> repr. _fld00. heap -> scal. second; }
       };
 
       const_ArrayIndex view_ArrayIndex( ) const
@@ -313,12 +318,36 @@ namespace val {
          mut_ArrayIndex( Expression* _xxxx ) : _xxxx( _xxxx ) { }
          const Expression & operator * ( ) const { return * _xxxx; }
 
-         std::string & var_name( ) const { return _xxxx -> repr. _fld00. loc. first; }
-         std::string extr_var_name( ) const { return std::move( _xxxx -> repr. _fld00. loc. first ); }
-         void update_var_name( const std::string & from ) const { _xxxx -> repr. _fld00. loc. first = from; }
-         int & at( ) const { return _xxxx -> repr. _fld00. loc. second; }
-         int extr_at( ) const { return std::move( _xxxx -> repr. _fld00. loc. second ); }
-         void update_at( const int & from ) const { _xxxx -> repr. _fld00. loc. second = from; }
+         const Expression & array_expr( ) const { return _xxxx -> repr. _fld00. heap -> scal. first; }
+         Expression extr_array_expr( ) const {
+            if( iswritable( _xxxx -> repr. _fld00. heap ))
+               return std::move( _xxxx -> repr. _fld00. heap -> scal. first );
+            else
+               return _xxxx -> repr. _fld00. heap -> scal. first;
+         }
+         void update_array_expr( const Expression & repl ) const
+         {
+            if( tvm::distinct( _xxxx -> repr. _fld00. heap -> scal. first, repl ))
+            {
+               _xxxx -> repr. _fld00. heap = takeshare( replacebywritable( _xxxx -> repr. _fld00. heap ));
+               _xxxx -> repr. _fld00. heap -> scal. first = repl;
+            }
+         }
+         const Expression & at( ) const { return _xxxx -> repr. _fld00. heap -> scal. second; }
+         Expression extr_at( ) const {
+            if( iswritable( _xxxx -> repr. _fld00. heap ))
+               return std::move( _xxxx -> repr. _fld00. heap -> scal. second );
+            else
+               return _xxxx -> repr. _fld00. heap -> scal. second;
+         }
+         void update_at( const Expression & repl ) const
+         {
+            if( tvm::distinct( _xxxx -> repr. _fld00. heap -> scal. second, repl ))
+            {
+               _xxxx -> repr. _fld00. heap = takeshare( replacebywritable( _xxxx -> repr. _fld00. heap ));
+               _xxxx -> repr. _fld00. heap -> scal. second = repl;
+            }
+         }
       };
 
       mut_ArrayIndex view_ArrayIndex( )
@@ -631,8 +660,8 @@ namespace val {
          const Expression & operator * ( ) const { return * _xxxx; }
          const_FieldCall( const Expression* _xxxx ) : _xxxx( _xxxx ) { }
 
-         const Expression & caller( ) const { return _xxxx -> repr. _fld06. heap -> scal. first; }
-         const Expression & field( ) const { return _xxxx -> repr. _fld06. heap -> scal. second; }
+         const Expression & caller( ) const { return _xxxx -> repr. _fld00. heap -> scal. first; }
+         const Expression & field( ) const { return _xxxx -> repr. _fld00. heap -> scal. second; }
       };
 
       const_FieldCall view_FieldCall( ) const
@@ -651,34 +680,34 @@ namespace val {
          mut_FieldCall( Expression* _xxxx ) : _xxxx( _xxxx ) { }
          const Expression & operator * ( ) const { return * _xxxx; }
 
-         const Expression & caller( ) const { return _xxxx -> repr. _fld06. heap -> scal. first; }
+         const Expression & caller( ) const { return _xxxx -> repr. _fld00. heap -> scal. first; }
          Expression extr_caller( ) const {
-            if( iswritable( _xxxx -> repr. _fld06. heap ))
-               return std::move( _xxxx -> repr. _fld06. heap -> scal. first );
+            if( iswritable( _xxxx -> repr. _fld00. heap ))
+               return std::move( _xxxx -> repr. _fld00. heap -> scal. first );
             else
-               return _xxxx -> repr. _fld06. heap -> scal. first;
+               return _xxxx -> repr. _fld00. heap -> scal. first;
          }
          void update_caller( const Expression & repl ) const
          {
-            if( tvm::distinct( _xxxx -> repr. _fld06. heap -> scal. first, repl ))
+            if( tvm::distinct( _xxxx -> repr. _fld00. heap -> scal. first, repl ))
             {
-               _xxxx -> repr. _fld06. heap = takeshare( replacebywritable( _xxxx -> repr. _fld06. heap ));
-               _xxxx -> repr. _fld06. heap -> scal. first = repl;
+               _xxxx -> repr. _fld00. heap = takeshare( replacebywritable( _xxxx -> repr. _fld00. heap ));
+               _xxxx -> repr. _fld00. heap -> scal. first = repl;
             }
          }
-         const Expression & field( ) const { return _xxxx -> repr. _fld06. heap -> scal. second; }
+         const Expression & field( ) const { return _xxxx -> repr. _fld00. heap -> scal. second; }
          Expression extr_field( ) const {
-            if( iswritable( _xxxx -> repr. _fld06. heap ))
-               return std::move( _xxxx -> repr. _fld06. heap -> scal. second );
+            if( iswritable( _xxxx -> repr. _fld00. heap ))
+               return std::move( _xxxx -> repr. _fld00. heap -> scal. second );
             else
-               return _xxxx -> repr. _fld06. heap -> scal. second;
+               return _xxxx -> repr. _fld00. heap -> scal. second;
          }
          void update_field( const Expression & repl ) const
          {
-            if( tvm::distinct( _xxxx -> repr. _fld06. heap -> scal. second, repl ))
+            if( tvm::distinct( _xxxx -> repr. _fld00. heap -> scal. second, repl ))
             {
-               _xxxx -> repr. _fld06. heap = takeshare( replacebywritable( _xxxx -> repr. _fld06. heap ));
-               _xxxx -> repr. _fld06. heap -> scal. second = repl;
+               _xxxx -> repr. _fld00. heap = takeshare( replacebywritable( _xxxx -> repr. _fld00. heap ));
+               _xxxx -> repr. _fld00. heap -> scal. second = repl;
             }
          }
       };
@@ -710,10 +739,10 @@ namespace val {
          const Expression & operator * ( ) const { return * _xxxx; }
          const_FnCall( const Expression* _xxxx ) : _xxxx( _xxxx ) { }
 
-         const std::string & fn_name( ) const { return _xxxx -> repr. _fld07. loc; }
-         size_t size( ) const { return _xxxx -> repr. _fld07. heap -> size( ); }
+         const std::string & fn_name( ) const { return _xxxx -> repr. _fld06. loc; }
+         size_t size( ) const { return _xxxx -> repr. _fld06. heap -> size( ); }
          const Expression & args( size_t _iiii ) const
-            { return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ]; }
+            { return _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ]; }
       };
 
       const_FnCall view_FnCall( ) const
@@ -732,31 +761,31 @@ namespace val {
          mut_FnCall( Expression* _xxxx ) : _xxxx( _xxxx ) { }
          const Expression & operator * ( ) const { return * _xxxx; }
 
-         std::string & fn_name( ) const { return _xxxx -> repr. _fld07. loc; }
-         std::string extr_fn_name( ) const { return std::move( _xxxx -> repr. _fld07. loc ); }
-         void update_fn_name( const std::string & from ) const { _xxxx -> repr. _fld07. loc = from; }
+         std::string & fn_name( ) const { return _xxxx -> repr. _fld06. loc; }
+         std::string extr_fn_name( ) const { return std::move( _xxxx -> repr. _fld06. loc ); }
+         void update_fn_name( const std::string & from ) const { _xxxx -> repr. _fld06. loc = from; }
 
-         size_t size( ) const { return _xxxx -> repr. _fld07. heap -> size( ); }
+         size_t size( ) const { return _xxxx -> repr. _fld06. heap -> size( ); }
          void push_back( const Expression & xx00 ) const
          {
-            _xxxx -> repr. _fld07. heap = tvm::push_back( _xxxx -> repr. _fld07. heap, xx00 );
+            _xxxx -> repr. _fld06. heap = tvm::push_back( _xxxx -> repr. _fld06. heap, xx00 );
          }
-         void pop_back( ) const { _xxxx -> repr. _fld07. heap = tvm::pop_back( _xxxx -> repr. _fld07. heap ); }
+         void pop_back( ) const { _xxxx -> repr. _fld06. heap = tvm::pop_back( _xxxx -> repr. _fld06. heap ); }
          const Expression& args( size_t _iiii ) const
-            { return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ]; }
+            { return _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ]; }
          Expression extr_args( size_t _iiii ) const
          {
-            if( iswritable( _xxxx -> repr. _fld07. heap ))
-               return std::move( _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ] );
+            if( iswritable( _xxxx -> repr. _fld06. heap ))
+               return std::move( _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ] );
             else
-               return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ];
+               return _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ];
          }
          void update_args( size_t _iiii, const Expression & repl ) const
          {
-            if( tvm::distinct( _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ], repl ))
+            if( tvm::distinct( _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ], repl ))
             {
-               _xxxx -> repr. _fld07. heap = takeshare( replacebywritable( _xxxx -> repr. _fld07. heap ));
-               _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ] = repl;
+               _xxxx -> repr. _fld06. heap = takeshare( replacebywritable( _xxxx -> repr. _fld06. heap ));
+               _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ] = repl;
             }
          }
       };
@@ -766,6 +795,78 @@ namespace val {
          if constexpr( check )
          {
             if( !option_is_FnCall( ))
+               throw std::invalid_argument( "wrong selector for view" );
+         }
+         return this;
+      }
+      
+      bool option_is_InitList( ) const noexcept
+      {
+         switch( _ssss )
+         {
+         case InitListExpr:
+            return true;
+         default:
+            return false;
+         }
+      }
+
+      struct const_InitList
+      {
+         const Expression* _xxxx;
+         const Expression & operator * ( ) const { return * _xxxx; }
+         const_InitList( const Expression* _xxxx ) : _xxxx( _xxxx ) { }
+         size_t size( ) const { return _xxxx -> repr. _fld07. heap -> size( ); }
+         const Expression & exprs( size_t _iiii ) const
+            { return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ]; }
+      };
+
+      const_InitList view_InitList( ) const
+      {
+         if constexpr( check )
+         {
+            if( !option_is_InitList( ))
+               throw std::invalid_argument( "wrong selector for view" );
+         }
+         return this;
+      }
+
+      struct mut_InitList
+      {
+         Expression* _xxxx;
+         mut_InitList( Expression* _xxxx ) : _xxxx( _xxxx ) { }
+         const Expression & operator * ( ) const { return * _xxxx; }
+
+         size_t size( ) const { return _xxxx -> repr. _fld07. heap -> size( ); }
+         void push_back( const Expression & xx00 ) const
+         {
+            _xxxx -> repr. _fld07. heap = tvm::push_back( _xxxx -> repr. _fld07. heap, xx00 );
+         }
+         void pop_back( ) const { _xxxx -> repr. _fld07. heap = tvm::pop_back( _xxxx -> repr. _fld07. heap ); }
+         const Expression& exprs( size_t _iiii ) const
+            { return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ]; }
+         Expression extr_exprs( size_t _iiii ) const
+         {
+            if( iswritable( _xxxx -> repr. _fld07. heap ))
+               return std::move( _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ] );
+            else
+               return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ];
+         }
+         void update_exprs( size_t _iiii, const Expression & repl ) const
+         {
+            if( tvm::distinct( _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ], repl ))
+            {
+               _xxxx -> repr. _fld07. heap = takeshare( replacebywritable( _xxxx -> repr. _fld07. heap ));
+               _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ] = repl;
+            }
+         }
+      };
+
+      mut_InitList view_InitList( )
+      {
+         if constexpr( check )
+         {
+            if( !option_is_InitList( ))
                throw std::invalid_argument( "wrong selector for view" );
          }
          return this;
@@ -890,10 +991,10 @@ namespace val {
          const Expression & operator * ( ) const { return * _xxxx; }
          const_StructInit( const Expression* _xxxx ) : _xxxx( _xxxx ) { }
 
-         const std::string & struct_name( ) const { return _xxxx -> repr. _fld07. loc; }
-         size_t size( ) const { return _xxxx -> repr. _fld07. heap -> size( ); }
+         const std::string & struct_name( ) const { return _xxxx -> repr. _fld06. loc; }
+         size_t size( ) const { return _xxxx -> repr. _fld06. heap -> size( ); }
          const Expression & inits( size_t _iiii ) const
-            { return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ]; }
+            { return _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ]; }
       };
 
       const_StructInit view_StructInit( ) const
@@ -912,31 +1013,31 @@ namespace val {
          mut_StructInit( Expression* _xxxx ) : _xxxx( _xxxx ) { }
          const Expression & operator * ( ) const { return * _xxxx; }
 
-         std::string & struct_name( ) const { return _xxxx -> repr. _fld07. loc; }
-         std::string extr_struct_name( ) const { return std::move( _xxxx -> repr. _fld07. loc ); }
-         void update_struct_name( const std::string & from ) const { _xxxx -> repr. _fld07. loc = from; }
+         std::string & struct_name( ) const { return _xxxx -> repr. _fld06. loc; }
+         std::string extr_struct_name( ) const { return std::move( _xxxx -> repr. _fld06. loc ); }
+         void update_struct_name( const std::string & from ) const { _xxxx -> repr. _fld06. loc = from; }
 
-         size_t size( ) const { return _xxxx -> repr. _fld07. heap -> size( ); }
+         size_t size( ) const { return _xxxx -> repr. _fld06. heap -> size( ); }
          void push_back( const Expression & xx00 ) const
          {
-            _xxxx -> repr. _fld07. heap = tvm::push_back( _xxxx -> repr. _fld07. heap, xx00 );
+            _xxxx -> repr. _fld06. heap = tvm::push_back( _xxxx -> repr. _fld06. heap, xx00 );
          }
-         void pop_back( ) const { _xxxx -> repr. _fld07. heap = tvm::pop_back( _xxxx -> repr. _fld07. heap ); }
+         void pop_back( ) const { _xxxx -> repr. _fld06. heap = tvm::pop_back( _xxxx -> repr. _fld06. heap ); }
          const Expression& inits( size_t _iiii ) const
-            { return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ]; }
+            { return _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ]; }
          Expression extr_inits( size_t _iiii ) const
          {
-            if( iswritable( _xxxx -> repr. _fld07. heap ))
-               return std::move( _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ] );
+            if( iswritable( _xxxx -> repr. _fld06. heap ))
+               return std::move( _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ] );
             else
-               return _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ];
+               return _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ];
          }
          void update_inits( size_t _iiii, const Expression & repl ) const
          {
-            if( tvm::distinct( _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ], repl ))
+            if( tvm::distinct( _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ], repl ))
             {
-               _xxxx -> repr. _fld07. heap = takeshare( replacebywritable( _xxxx -> repr. _fld07. heap ));
-               _xxxx -> repr. _fld07. heap -> begin( ) [ _iiii ] = repl;
+               _xxxx -> repr. _fld06. heap = takeshare( replacebywritable( _xxxx -> repr. _fld06. heap ));
+               _xxxx -> repr. _fld06. heap -> begin( ) [ _iiii ] = repl;
             }
          }
       };
