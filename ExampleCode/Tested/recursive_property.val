@@ -1,0 +1,41 @@
+property Formula
+{
+	Boolval: { bool b; }
+	Not: { Formula f; }
+	And: { Formula l, r; }
+	Or: { Formula l, r; }
+	Implies: { Formula l, r; }
+}
+
+// (True && False) -> (True || False)
+Formula ff = Implies { 
+	And{ 
+		Boolval{true}, 
+		Boolval{false} 
+	}, 
+	Or{
+		Boolval{true}, 
+		Boolval{false} 
+	}
+};
+
+fn eval(Formula f) -> bool
+{
+	match(f)
+	{
+		case Boolval -> { return f.b; }
+		case Not -> { return !eval(f.f); }
+		case And -> {
+			return eval(f.l) && eval(f.r);
+		}
+		case Or -> {
+			return eval(f.l) || eval(f.r);
+		}
+		case Implies -> {
+			return !eval(f.l) || eval(f.r);
+		}
+	}
+}
+
+// Expected 1
+printf("Result: %d", eval(ff));

@@ -39,6 +39,10 @@ namespace val
 		std::unordered_map <std::string, FnTable> fn_table;
 
 		std::unordered_map <std::string, std::string> opt_to_prop;
+		std::unordered_set <std::string> inouts;
+
+		bool in_fn{false};
+		std::string in_fn_name;
 
 		bool last_expr_was_property{false};
 		bool in_match{false};

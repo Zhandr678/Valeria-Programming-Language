@@ -641,13 +641,13 @@ std::string val::CGenerator::ToString(const Expression& expr) noexcept
     case selector::DoubleLiteralExpr:
         return std::to_string(expr.view_DoubleLiteral().value());
     case selector::StringLiteralExpr:
-        return expr.view_StringLiteral().value();
+        return "xx_init_string(" + expr.view_StringLiteral().value() + ")";
     case selector::BoolLiteralExpr:
         return expr.view_BoolLiteral().value() ? "1" : "0";
     case selector::CharLiteralExpr:
         return "'" + std::string(1, expr.view_CharLiteral().value()) + "'";
     case selector::VarNameExpr:
-        return expr.view_VarName().name();
+        return inouts.contains(expr.view_VarName().name()) ? "(*" + expr.view_VarName().name() + ")" : expr.view_VarName().name();
     case selector::FieldCallExpr:
         return EvalExpression(expr).str_expr;
     case selector::StructInitExpr:
@@ -660,7 +660,7 @@ std::string val::CGenerator::ToString(const Expression& expr) noexcept
 
             if (ini.type == ExprType::String)
             {
-                s += "xx_init_string(" + ini.str_expr + ")";
+                s += ini.str_expr;
             }
             else if (ini.type == ExprType::Property && opt_to_prop.contains(ini.type_name))
             {
@@ -692,10 +692,14 @@ std::string val::CGenerator::ToString(const Expression& expr) noexcept
                 expr_str += ", ";
                 auto next_expr = EvalExpression(expr.view_FnCall().args(i));
 
-                expr_str += next_expr.str_expr;
+                
                 if (next_expr.type_name == "string")
                 {
+                    expr_str += next_expr.str_expr.substr(15, next_expr.str_expr.size() - 16);
                     expr_str += "->data";
+                }
+                else {
+                    expr_str += next_expr.str_expr;
                 }
             }
 
@@ -705,6 +709,10 @@ std::string val::CGenerator::ToString(const Expression& expr) noexcept
         for (size_t i = 0; i < expr.view_FnCall().size(); i++)
         {
             if (i > 0) { expr_str += ", "; }
+            if (fn_table.at(expr.view_FnCall().fn_name()).param_symbol_table.at(fn_table.at(expr.view_FnCall().fn_name()).order_param[i]).is_inout)
+            {
+                expr_str += "&";
+            }
             expr_str += EvalExpression(expr.view_FnCall().args(i)).str_expr;
         }
 
@@ -850,7 +858,7 @@ void val::CGenerator::GenVarInit(const Statement& var_init_stmt, std::ostream& t
         if (not view.init_expr().option_is_EmptyLiteral())
         {
             auto expr = EvalExpression(view.init_expr());
-            to << "xx_init_string(" << expr.str_expr << ");\n";
+            to << expr.str_expr << "; \n";
         }
         else {
             to << "xx_init_string(\"\");\n";
@@ -905,6 +913,9 @@ void val::CGenerator::GenMakeFn(const Statement& make_fn, std::ostream& to, size
 {
     const auto& view = make_fn.view_MakeFunction();
 
+    in_fn = true;
+    in_fn_name = view.fn_name();
+
     to << indent(tabs) << view.ret_type_name() << " " << view.fn_name() << "(";
     for (size_t i = 0; i < view.size(); i++)
     {
@@ -916,20 +927,49 @@ void val::CGenerator::GenMakeFn(const Statement& make_fn, std::ostream& to, size
         {
             to << "array*";
         }
-        else {
+        else if (IsPrimitive(view_param.type_name())) {
             to << view_param.type_name();
+        }
+        else {
+            to << view_param.type_name() << '*';
         }
 
         if (view_param.is_inout())
         {
-            to << "*";
+            inouts.insert(view_param.var_name());
+            to << '*';
         }
 
         to << " " << view_param.var_name();
     }
     to << ")\n";
 
-    GenBlock(view.fn_body(), to, tabs);
+    to << indent(tabs) << "{\n";
+
+    std::vector <std::string> registered_vars;
+    for (size_t i = 0; i < view.size(); i++)
+    {
+        const auto& view_param = view.params(i).view_FnArgs();
+
+        if (not view_param.is_inout() && not TypeIsPrimitive(view_param.type_name()))
+        {
+            registered_vars.push_back(view_param.var_name());
+            to << indent(tabs + 1) << "MVS_RegisterNew((uintptr_t)" <<
+                view_param.var_name() << ", sizeof(" << view_param.type_name() << "), xx_free_" << view_param.type_name() << ");\n";
+        }
+    }
+
+    GenBlock(view.fn_body(), to, tabs + 1);
+
+    for (const auto& v : registered_vars)
+    {
+        to << indent(tabs + 1) << "MVS_DetachPointer((uintptr_t)" << v << ");\n";
+    }
+
+    to << indent(tabs) << "}\n";
+
+    in_fn = false;
+    inouts.clear();
 }
 
 void val::CGenerator::GenStructDecl(const Statement& struct_stmt, std::ostream& to, size_t tabs) noexcept
@@ -1012,121 +1052,122 @@ void val::CGenerator::GenStructDel(const Statement& struct_stmt, std::ostream& t
     to << indent(tabs) << "}\n\n";
 }
 
-void val::CGenerator::GenStructInit(const Statement& struct_stmt, std::ostream& to, size_t tabs) noexcept
+void val::CGenerator::GenStructInit(const Statement& struct_stmt, std::ostream& to, size_t tabs) noexcept 
 {
     const auto& view = struct_stmt.view_MakeStruct();
-    to << indent(tabs) << view.struct_name() << "* xx_init_" << view.struct_name() << "(";
+    const std::string& s_name = view.struct_name();
 
-    if (view.size() == 0)
-    {
-        to << ")\n" << indent(tabs) << "{\n";
-        to << indent(tabs + 1) << "return NULL;\n";
-        to << indent(tabs) << "}\n\n";
+    to << indent(tabs) << s_name << "* xx_init_" << s_name << "(";
+
+    // Handle empty structs
+    if (view.size() == 0) {
+        to << ")\n" << indent(tabs) << "{\n"
+           << indent(tabs + 1) << "return NULL;\n"
+           << indent(tabs) << "}\n\n";
         return;
     }
 
-    int i = 0;
+    auto S = std::get<StructType>(type_table.at(s_name));
 
-    auto S = std::get <StructType>(type_table.at(view.struct_name()));
-    for (const auto& [field_name, var_kind] : S.fields)
-    {
-        if (i > 0)
-        {
-            to << ", ";
-        }
+    for (size_t i = 0; i < S.order_fields.size(); ++i) {
+        const std::string& f_name = S.order_fields[i];
+        const auto& var_kind = S.fields.at(f_name);
 
-        if (_IsPrimitive(view.struct_name(), field_name) || _IsEnumType(view.struct_name(), field_name))
-        {
-            to << std::get <ObjectKind>(var_kind).type_name << " " << field_name;
-        }
-        else if (_IsStructType(view.struct_name(), field_name) || _IsProperty(view.struct_name(), field_name))
-        {
-            to << std::get <ObjectKind>(var_kind).type_name << "* " << field_name;
-        }
-        else if (_IsString(view.struct_name(), field_name))
-        {
-            to << "string* " << field_name;
-        }
+        if (i > 0) to << ", ";
+
+        if (_IsString(s_name, f_name)) {
+            to << "string* " << f_name;
+        } 
+        else if (_IsPrimitive(s_name, f_name) || _IsEnumType(s_name, f_name)) {
+            to << std::get<ObjectKind>(var_kind).type_name << " " << f_name;
+        } 
+        else if (_IsStructType(s_name, f_name) || _IsProperty(s_name, f_name)) {
+            to << std::get<ObjectKind>(var_kind).type_name << "* " << f_name;
+        } 
         else {
-            to << "array* " << field_name;
-        }
-
-        i++;
-    }
-
-    to << ") \n";
-    to << indent(tabs) << "{\n";
-
-    to << indent(tabs + 1) << view.struct_name() << " *xx_" << view.struct_name()
-        << "_init_ptr = malloc(sizeof(" << view.struct_name() << "));\n";
-
-    for (const auto& [field_name, var_kind] : S.fields)
-    {
-        if (_IsPrimitive(view.struct_name(), field_name) || _IsEnumType(view.struct_name(), field_name))
-        {
-            to << indent(tabs + 1) << "xx_" << view.struct_name() << "_init_ptr->" <<
-                field_name << " = " << field_name << ";\n";
-        }
-        else if (_IsStructType(view.struct_name(), field_name) || _IsProperty(view.struct_name(), field_name) || _IsString(view.struct_name(), field_name))
-        {
-            to << indent(tabs + 1) << "xx_" << view.struct_name() << "_init_ptr->" <<
-                field_name << " = " << field_name << ";\n";
-            to << indent(tabs + 1) << "if (" << field_name << " != NULL) {\n";
-            to << indent(tabs + 2) << "MVS_RegisterNew((uintptr_t)"
-                << field_name << ", sizeof(" << std::get <ObjectKind>(var_kind).type_name << "), xx_free_"
-                << std::get <ObjectKind>(var_kind).type_name << ");\n";
-            to << indent(tabs + 1) << "}\n";
-        }
-        else {
-            to << indent(tabs + 1) << "xx_" << view.struct_name() << "_init_ptr->" <<
-                field_name << " = " << field_name << ";\n";
-            to << indent(tabs + 2) << "if (" << field_name << " != NULL) {\n";
-            to << indent(tabs + 2)
-                << "MVS_RegisterNew((uintptr_t)" << field_name << ", sizeof(array), xx_free_array);\n";
-            to << indent(tabs + 1) << "}\n";
+            to << "array* " << f_name;
         }
     }
 
-    to << indent(tabs + 1) << "return xx_" << view.struct_name() << "_init_ptr;\n";
+    to << ") \n" << indent(tabs) << "{\n";
+
+    to << indent(tabs + 1) << s_name << " *xx_init_ptr = malloc(sizeof(" << s_name << "));\n";
+
+    // Field Initialization and MVS Registration
+    for (const std::string& f_name : S.order_fields) {
+        const auto& var_kind = S.fields.at(f_name);
+        to << indent(tabs + 1) << "xx_init_ptr->" << f_name << " = " << f_name << ";\n";
+
+        if (_IsPrimitive(s_name, f_name) || _IsEnumType(s_name, f_name)) {
+            continue;
+        }
+
+        to << indent(tabs + 1) << "if (" << f_name << " != NULL) {\n";
+
+        if (_IsString(s_name, f_name)) {
+            to << indent(tabs + 2) << "MVS_RegisterNew((uintptr_t)" << f_name 
+               << ", sizeof(string), xx_free_string);\n";
+        } 
+        else if (_IsStructType(s_name, f_name) || _IsProperty(s_name, f_name)) {
+            const std::string& t_name = std::get<ObjectKind>(var_kind).type_name;
+            to << indent(tabs + 2) << "MVS_RegisterNew((uintptr_t)" << f_name 
+               << ", sizeof(" << t_name << "), xx_free_" << t_name << ");\n";
+        } 
+        else {
+            // This field is an ArrayKind
+            to << indent(tabs + 2) << "MVS_RegisterNew((uintptr_t)" << f_name 
+               << ", sizeof(array), xx_free_array);\n";
+        }
+
+        to << indent(tabs + 1) << "}\n";
+    }
+
+    to << indent(tabs + 1) << "return xx_init_ptr;\n";
     to << indent(tabs) << "}\n\n";
 }
 
-void val::CGenerator::GenStructClone(const Statement& struct_stmt, std::ostream& to, size_t tabs) noexcept
+void val::CGenerator::GenStructClone(const Statement& struct_stmt, std::ostream& to, size_t tabs) noexcept 
 {
     const auto& view = struct_stmt.view_MakeStruct();
-    to << indent(tabs) << view.struct_name() << "* " << "xx_clone_" << view.struct_name() << "(" << view.struct_name() << "* ptr) \n";
+    const std::string& s_name = view.struct_name();
+
+    to << indent(tabs) << s_name << "* xx_clone_" << s_name << "(" << s_name << "* ptr) \n";
     to << indent(tabs) << "{\n";
 
     to << indent(tabs + 1) << "if (ptr == NULL) { return NULL; }\n";
-    to << indent(tabs + 1) << view.struct_name() << "* clone = xx_init_" << view.struct_name() << "(";
 
-    auto S = std::get <StructType>(type_table.at(view.struct_name()));
-    int i = 0;
-    for (const auto& [field_name, var_kind] : S.fields)
-    {
-        if (i > 0) { to << ", "; }
-        if (_IsPrimitive(view.struct_name(), field_name) || _IsEnumType(view.struct_name(), field_name))
-        {
-            to << "ptr->" << field_name;
+    to << indent(tabs + 1) << s_name << "* clone = xx_init_" << s_name << "(";
+
+    auto S = std::get<StructType>(type_table.at(s_name));
+
+    for (size_t i = 0; i < S.order_fields.size(); ++i) {
+        const std::string& f_name = S.order_fields[i];
+        const auto& var_kind = S.fields.at(f_name);
+
+        if (i > 0) to << ", ";
+
+        if (_IsString(s_name, f_name)) {
+            to << "xx_clone_string(ptr->" << f_name << ")";
         }
-        else if (_IsStructType(view.struct_name(), field_name) || _IsProperty(view.struct_name(), field_name))
-        {
-            to << "xx_clone_" << std::get <ObjectKind>(var_kind).type_name << "(ptr->" << field_name << ")";
+        else if (_IsPrimitive(s_name, f_name) || _IsEnumType(s_name, f_name)) {
+            // Primitives are copied by value, no cloning function needed
+            to << "ptr->" << f_name;
         }
-        else if (_IsString(view.struct_name(), field_name))
-        {
-            to << "xx_clone_string(ptr->" << field_name << ")";
+        else if (_IsStructType(s_name, f_name) || _IsProperty(s_name, f_name)) {
+            const std::string& t_name = std::get<ObjectKind>(var_kind).type_name;
+            to << "xx_clone_" << t_name << "(ptr->" << f_name << ")";
         }
         else {
-            to << "xx_clone_array(ptr->" << field_name << ")";
+            to << "xx_clone_array(ptr->" << f_name << ")";
         }
-        i++;
     }
 
     to << ");\n";
-    if (not std::get <StructType>(type_table.at(view.struct_name())).fields.empty()) {
-        to << indent(tabs + 1) << "MVS_RegisterNew((uintptr_t)clone, sizeof(" << view.struct_name() << "), xx_free_" << view.struct_name() << ");\n";
+
+    if (!S.fields.empty()) {
+        to << indent(tabs + 1) << "MVS_RegisterNew((uintptr_t)clone, sizeof(" << s_name << "), xx_free_" << s_name << ");\n";
     }
+
     to << indent(tabs + 1) << "return clone;\n";
     to << indent(tabs) << "}\n\n";
 }
@@ -1143,7 +1184,8 @@ void val::CGenerator::GenFwDeclProp(const Statement& prop_stmt, std::ostream& to
 {
     const std::string& prop_name = prop_stmt.view_MakeProperty().prop_name();
     to << indent(tabs) << "typedef struct " << prop_name << " " << prop_name << ";\n";
-    to << indent(tabs) << "void xx_free_" << prop_name << "(uintptr_t address);\n\n";
+    to << indent(tabs) << "void xx_free_" << prop_name << "(uintptr_t address);\n";
+    to << indent(tabs) << prop_name << "* xx_clone_" << prop_name << "(" << prop_name << "* ptr);\n\n";
 }
 
 void val::CGenerator::GenTagEnumProp(const Statement& prop_stmt, std::ostream& to, size_t tabs) noexcept
@@ -1668,11 +1710,23 @@ bool val::CGenerator::TypeIsString(const std::string& type_name) const noexcept
 
 bool val::CGenerator::_IsPrimitive(const std::string& var_name) const noexcept
 {
-    auto it = symbol_table.find(var_name);
-    if (it == symbol_table.end()) return false;
+    if (not in_fn) 
+    {
+        auto it = symbol_table.find(var_name);
+        if (it == symbol_table.end()) return false;
 
-    auto obj = std::get_if<ObjectKind>(&it->second);
-    if (!obj) return false;
+        auto obj = std::get_if<ObjectKind>(&it->second);
+        if (not obj) return false;
+
+        const auto& t = obj->type_name;
+        return t == "int" || t == "uint" || t == "bool" || t == "double" || t == "char";
+    }
+    
+    auto it = fn_table.at(in_fn_name).param_symbol_table.find(var_name);
+    if (it == fn_table.at(in_fn_name).param_symbol_table.end()) return false;
+
+    auto obj = std::get_if<ObjectKind>(&it->second.kind);
+    if (not obj) return false;
 
     const auto& t = obj->type_name;
     return t == "int" || t == "uint" || t == "bool" || t == "double" || t == "char";
@@ -1698,10 +1752,19 @@ bool val::CGenerator::_IsPrimitive(const std::string& struct_name, const std::st
 
 bool val::CGenerator::_IsString(const std::string& var_name) const noexcept
 {
-    auto it = symbol_table.find(var_name);
-    if (it == symbol_table.end()) return false;
+    if (not in_fn) 
+    {
+        auto it = symbol_table.find(var_name);
+        if (it == symbol_table.end()) return false;
 
-    auto obj = std::get_if<ObjectKind>(&it->second);
+        auto obj = std::get_if<ObjectKind>(&it->second);
+        return obj && obj->type_name == "string";
+    }
+
+    auto it = fn_table.at(in_fn_name).param_symbol_table.find(var_name);
+    if (it == fn_table.at(in_fn_name).param_symbol_table.end()) return false;
+
+    auto obj = std::get_if<ObjectKind>(&it->second.kind);
     return obj && obj->type_name == "string";
 }
 
@@ -1722,10 +1785,22 @@ bool val::CGenerator::_IsString(const std::string& struct_name, const std::strin
 
 bool val::CGenerator::_IsStructType(const std::string& var_name) const noexcept
 {
-    auto it = symbol_table.find(var_name);
-    if (it == symbol_table.end()) return false;
+    if (not in_fn) 
+    {
+        auto it = symbol_table.find(var_name);
+        if (it == symbol_table.end()) return false;
 
-    auto obj = std::get_if<ObjectKind>(&it->second);
+        auto obj = std::get_if<ObjectKind>(&it->second);
+        if (!obj) return false;
+
+        auto tit = type_table.find(obj->type_name);
+        return tit != type_table.end() && std::holds_alternative<StructType>(tit->second);
+    }
+
+    auto it = fn_table.at(in_fn_name).param_symbol_table.find(var_name);
+    if (it == fn_table.at(in_fn_name).param_symbol_table.end()) return false;
+
+    auto obj = std::get_if<ObjectKind>(&it->second.kind);
     if (!obj) return false;
 
     auto tit = type_table.find(obj->type_name);
@@ -1752,10 +1827,22 @@ bool val::CGenerator::_IsStructType(const std::string& struct_name, const std::s
 
 bool val::CGenerator::_IsEnumType(const std::string& var_name) const noexcept
 {
-    auto it = symbol_table.find(var_name);
-    if (it == symbol_table.end()) return false;
+    if (not in_fn)
+    {
+        auto it = symbol_table.find(var_name);
+        if (it == symbol_table.end()) return false;
 
-    auto obj = std::get_if<ObjectKind>(&it->second);
+        auto obj = std::get_if<ObjectKind>(&it->second);
+        if (!obj) return false;
+
+        auto tit = type_table.find(obj->type_name);
+        return tit != type_table.end() && std::holds_alternative<EnumType>(tit->second);
+    }
+
+    auto it = fn_table.at(in_fn_name).param_symbol_table.find(var_name);
+    if (it == fn_table.at(in_fn_name).param_symbol_table.end()) return false;
+
+    auto obj = std::get_if<ObjectKind>(&it->second.kind);
     if (!obj) return false;
 
     auto tit = type_table.find(obj->type_name);
@@ -1782,10 +1869,22 @@ bool val::CGenerator::_IsEnumType(const std::string& struct_name, const std::str
 
 bool val::CGenerator::_IsProperty(const std::string& var_name) const noexcept
 {
-    auto it = symbol_table.find(var_name);
-    if (it == symbol_table.end()) return false;
+    if (not in_fn) 
+    {
+        auto it = symbol_table.find(var_name);
+        if (it == symbol_table.end()) return false;
 
-    auto obj = std::get_if<ObjectKind>(&it->second);
+        auto obj = std::get_if<ObjectKind>(&it->second);
+        if (!obj) return false;
+
+        auto tit = type_table.find(obj->type_name);
+        return tit != type_table.end() && std::holds_alternative<PropertyType>(tit->second);
+    }
+
+    auto it = fn_table.at(in_fn_name).param_symbol_table.find(var_name);
+    if (it == fn_table.at(in_fn_name).param_symbol_table.end()) return false;
+
+    auto obj = std::get_if<ObjectKind>(&it->second.kind);
     if (!obj) return false;
 
     auto tit = type_table.find(obj->type_name);
@@ -1812,10 +1911,21 @@ bool val::CGenerator::_IsProperty(const std::string& struct_name, const std::str
 
 std::optional<std::string> val::CGenerator::_IsArray(const std::string& var_name) const noexcept
 {
-    auto it = symbol_table.find(var_name);
-    if (it == symbol_table.end()) return std::nullopt;
+    if (not in_fn) 
+    {
+        auto it = symbol_table.find(var_name);
+        if (it == symbol_table.end()) return std::nullopt;
 
-    if (auto arr = std::get_if<ArrayKind>(&it->second))
+        if (auto arr = std::get_if<ArrayKind>(&it->second))
+            return arr->of_kind.type_name;
+
+        return std::nullopt;
+    }
+
+    auto it = fn_table.at(in_fn_name).param_symbol_table.find(var_name);
+    if (it == fn_table.at(in_fn_name).param_symbol_table.end()) return std::nullopt;
+
+    if (auto arr = std::get_if<ArrayKind>(&it->second.kind))
         return arr->of_kind.type_name;
 
     return std::nullopt;
@@ -1880,7 +1990,8 @@ void val::CGenerator::GenExprCall(const Statement& expr_call_stmt, std::ostream&
     if (fn_name == "printf" || fn_name == "scanf")
     {
         // Skip format string
-        to << fn_name << "(" << EvalExpression(expr_call_stmt.view_ExprCall().expr().view_FnCall().args(0)).str_expr;
+        std::string format_str = EvalExpression(expr_call_stmt.view_ExprCall().expr().view_FnCall().args(0)).str_expr;
+        to << fn_name << "(" << format_str.substr(15, format_str.size() - 16);
         for (size_t i = 1; i < expr_call_stmt.view_ExprCall().expr().view_FnCall().size(); i++)
         {
             to << ", ";
@@ -2063,14 +2174,14 @@ void val::CGenerator::GenAssign(const Statement& assign_stmt, std::ostream& to, 
                 to << indent(tabs) << "{\n";
                 to << indent(tabs + 1) << "array* xx_clone = xx_clone_array(" << arr_name << ");\n";
                 to << indent(tabs + 1) << "MVS_DetachPointer((uintptr_t)" << arr_name << ");\n";
-                to << indent(tabs + 1) << "string* xx_new_s = xx_init_string(" << rhs_expr.str_expr << ");\n";
+                to << indent(tabs + 1) << "string* xx_new_s = " << rhs_expr.str_expr << ";\n";
                 to << indent(tabs + 1) << "MVS_RegisterNew((uintptr_t)xx_new_s, sizeof(string), xx_free_string);\n";
                 to << indent(tabs + 1) << "xx_array_set(xx_clone, " << at_expr_str << ", &xx_new_s);\n";
                 to << indent(tabs + 1) << arr_name << " = xx_clone;\n";
                 to << indent(tabs) << "}\n";
                 to << indent(tabs) << "else\n";
                 to << indent(tabs) << "{\n";
-                to << indent(tabs + 1) << "string* xx_new_s = xx_init_string(" << rhs_expr.str_expr << ");\n";
+                to << indent(tabs + 1) << "string* xx_new_s = " << rhs_expr.str_expr << ";\n";
                 to << indent(tabs + 1) << "MVS_RegisterNew((uintptr_t)xx_new_s, sizeof(string), xx_free_string);\n";
                 to << indent(tabs + 1) << "xx_array_set(" << arr_name << ", " << at_expr_str << ", &xx_new_s);\n";
                 to << indent(tabs) << "}\n";
@@ -2187,7 +2298,7 @@ void val::CGenerator::GenAssign(const Statement& assign_stmt, std::ostream& to, 
 
                     if (elem_type == "string")
                     {
-                        to << indent(tabs + 2) << "string* xx_new_s = xx_init_string(" << rhs_expr.str_expr << ");\n";
+                        to << indent(tabs + 2) << "string* xx_new_s = " << rhs_expr.str_expr << ";\n";
                         to << indent(tabs + 2) << "MVS_RegisterNew((uintptr_t)xx_new_s, sizeof(string), xx_free_string);\n";
                         to << indent(tabs + 2) << "xx_array_set(xx_arr_clone, " << field_idx << ", &xx_new_s);\n";
                     }
@@ -2207,7 +2318,7 @@ void val::CGenerator::GenAssign(const Statement& assign_stmt, std::ostream& to, 
 
                     if (elem_type == "string")
                     {
-                        to << indent(tabs + 2) << "string* xx_new_s = xx_init_string(" << rhs_expr.str_expr << ");\n";
+                        to << indent(tabs + 2) << "string* xx_new_s = " << rhs_expr.str_expr << ";\n";
                         to << indent(tabs + 2) << "MVS_RegisterNew((uintptr_t)xx_new_s, sizeof(string), xx_free_string);\n";
                         to << indent(tabs + 2) << "xx_array_set(xx_field_arr, " << field_idx << ", &xx_new_s);\n";
                     }
@@ -2235,7 +2346,7 @@ void val::CGenerator::GenAssign(const Statement& assign_stmt, std::ostream& to, 
 
                     if (elem_type == "string")
                     {
-                        to << indent(tabs + 2) << "string* xx_new_s = xx_init_string(" << rhs_expr.str_expr << ");\n";
+                        to << indent(tabs + 2) << "string* xx_new_s = " << rhs_expr.str_expr << ";\n";
                         to << indent(tabs + 2) << "MVS_RegisterNew((uintptr_t)xx_new_s, sizeof(string), xx_free_string);\n";
                         to << indent(tabs + 2) << "xx_array_set(xx_arr_clone, " << field_idx << ", &xx_new_s);\n";
                     }
@@ -2255,7 +2366,7 @@ void val::CGenerator::GenAssign(const Statement& assign_stmt, std::ostream& to, 
 
                     if (elem_type == "string")
                     {
-                        to << indent(tabs + 2) << "string* xx_new_s = xx_init_string(" << rhs_expr.str_expr << ");\n";
+                        to << indent(tabs + 2) << "string* xx_new_s = " << rhs_expr.str_expr << ";\n";
                         to << indent(tabs + 2) << "MVS_RegisterNew((uintptr_t)xx_new_s, sizeof(string), xx_free_string);\n";
                         to << indent(tabs + 2) << "xx_array_set(xx_field_arr, " << field_idx << ", &xx_new_s);\n";
                     }
@@ -2472,7 +2583,7 @@ void val::CGenerator::GenAssign(const Statement& assign_stmt, std::ostream& to, 
                     auto EmitArraySet = [&](const std::string& arr_ref, size_t t) {
                         if (elem_type == "string")
                         {
-                            to << indent(t) << "string* xx_new_s = xx_init_string(" << rhs_expr.str_expr << ");\n";
+                            to << indent(t) << "string* xx_new_s = " << rhs_expr.str_expr << ";\n";
                             to << indent(t) << "MVS_RegisterNew((uintptr_t)xx_new_s, sizeof(string), xx_free_string);\n";
                             to << indent(t) << "xx_array_set(" << arr_ref << ", " << field_idx << ", &xx_new_s);\n";
                         }
@@ -2789,7 +2900,8 @@ ExprRet val::CGenerator::EvalVarName(const Expression& var_name_expr) noexcept
         else if (std::holds_alternative <PropertyType>(type_table.at(*t))) { ret.type = ExprType::ArrayOfProp; }
     }
 
-    ret.type_name = GetTypeName(symbol_table.at(name));
+    if (in_fn) { ret.type_name = GetTypeName(fn_table.at(in_fn_name).param_symbol_table.at(name).kind); }
+    else { ret.type_name = GetTypeName(symbol_table.at(name)); }
     return ret;
 }
 
@@ -2840,7 +2952,7 @@ ExprRet val::CGenerator::EvalFnCallExpr(const Expression& fn_call_expr) noexcept
         }
         else if (type_name == "uint" || type_name == "int" ||
             type_name == "double" || type_name == "char" ||
-            type_name == "bool")
+            type_name == "bool" || type_name == "void")
         {
             ret.type = ExprType::Primitive;
         }
@@ -2932,12 +3044,10 @@ ExprRet val::CGenerator::EvalBinaryExpr(const Expression& bin_expr) noexcept
 
 ExprRet val::CGenerator::EvalUnaryExpr(const Expression& unary_expr) noexcept
 {
-    ExprRet ret;
+    ExprRet ret = EvalExpression(unary_expr.view_Unary().expr());
     
     ret.is_lvalue = false;
-    ret.str_expr = ToString(unary_expr);
     ret.type = ExprType::Primitive;
-    ret.type_name = EvalExpression(unary_expr.view_Unary().expr()).type_name;
 
     return ret;
 }
@@ -3013,7 +3123,7 @@ ExprRet val::CGenerator::EvalInitListExpr(const Expression& init_list_expr) noex
         }
         else if (fret.type == ExprType::String)
         {
-            ret.str_expr += "xx_init_string(" + fret.str_expr + "), ";
+            ret.str_expr += fret.str_expr + ", ";
         }
         else
         {

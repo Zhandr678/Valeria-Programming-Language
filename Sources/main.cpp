@@ -52,8 +52,6 @@ int main(int argc, char* argv[])
 
 		std::cout << "Generate IR Successful\n";
 
-		return 0;
-
 		std::filesystem::path c_file = val_source_path;
 		c_file.replace_extension(".c");
 		std::filesystem::path output_binary = val_source_path;

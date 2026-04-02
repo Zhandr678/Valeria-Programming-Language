@@ -1,6 +1,8 @@
 #include "Semantics.h"
 #include "SemanticException.h"
 
+#include <sstream>
+
 namespace val
 {
     static int GetLine(const Statement& stmt) noexcept
@@ -227,6 +229,7 @@ namespace val
         return std::move(compile_info);
     }
 
+    // UNNECESSARY FUNCTION DONT TRY TO UNDERSTAND THIS
     std::string Semantics::ExprToStr(const Expression& expr, bool strf)
     {
         switch (expr.sel())
@@ -241,7 +244,7 @@ namespace val
             return expr.view_VarName().name();
         case selector::ArrayIndexExpr:
         {
-            return "???";
+            return ExprToStr(expr.view_ArrayIndex().array_expr()) + "[" + ExprToStr(expr.view_ArrayIndex().at()) + "]";
         }
         case selector::BoolLiteralExpr:
             return expr.view_BoolLiteral().value() ? "1" : "0";
@@ -283,85 +286,7 @@ namespace val
         }
         case selector::BinaryExpr:
         {
-            auto expr_left = AnalyzeExpression(expr.view_Binary().lhs(), 0);
-            auto expr_right = AnalyzeExpression(expr.view_Binary().rhs(), 0);
-            if (expr.view_Binary().op() == "+" && 
-                (std::holds_alternative <ObjectKind>(expr_left) && std::get <ObjectKind>(expr_left).type_name == "string") &&
-                (std::holds_alternative <ObjectKind>(expr_right) && (std::get <ObjectKind>(expr_right).type_name == "string"))
-            )
-            {
-                return "xx_string_add(" + 
-                    ExprToStr(expr.view_Binary().lhs()) + ", " + (IsLvalue(expr.view_Binary().lhs()) ? "0, " : "1, ") +
-                    ExprToStr(expr.view_Binary().rhs()) + ", " + (IsLvalue(expr.view_Binary().rhs()) ? "0)" : "1)");
-            }
-            else if (expr.view_Binary().op() == "+" &&
-                (std::holds_alternative <ArrayKind>(expr_left)) &&
-                (std::holds_alternative <ArrayKind>(expr_right))
-                )
-            {
-                return "xx_array_add(" +
-                    ExprToStr(expr.view_Binary().lhs()) + ", " + (IsLvalue(expr.view_Binary().lhs()) ? "0, " : "1, ") +
-                    ExprToStr(expr.view_Binary().rhs()) + ", " + (IsLvalue(expr.view_Binary().rhs()) ? "0)" : "1)");
-            }
-            else if (expr.view_Binary().op() == "+" &&
-                (std::holds_alternative <ObjectKind>(expr_left) && std::get <ObjectKind>(expr_left).type_name == "string") &&
-                (std::holds_alternative <ObjectKind>(expr_right) && (std::get <ObjectKind>(expr_right).type_name == "char")))
-            {
-                return "xx_string_add_char(" +
-                    ExprToStr(expr.view_Binary().lhs()) + ", " + (IsLvalue(expr.view_Binary().lhs()) ? "0, " : "1, ") +
-                    ExprToStr(expr.view_Binary().rhs()) + ")";
-            }
-            else if (expr.view_Binary().op() == "+" &&
-                (std::holds_alternative <ArrayKind>(expr_left)) &&
-                (std::holds_alternative <ObjectKind>(expr_right)))
-            {
-                std::string ret_expr = "xx_array_add_elem(" +
-                    ExprToStr(expr.view_Binary().lhs()) + ", " + (IsLvalue(expr.view_Binary().lhs()) ? "0, " : "1, ");
-                   
-                if (IsLvalue(expr.view_Binary().rhs()))
-                {
-                    ret_expr += ('&' + ExprToStr(expr.view_Binary().rhs()) + ')');
-                    return ret_expr;
-                }
-                else {
-                    auto elem_expr = AnalyzeExpression(expr.view_Binary().rhs(), 0);
-                    ret_expr += ("&(" + std::get <ObjectKind>(elem_expr).type_name + "){" + ExprToStr(expr.view_Binary().rhs()) + "}");
-                }
-            }
-            else if (expr.view_Binary().op() == "-" && 
-                (std::holds_alternative <ObjectKind>(expr_left) && std::get <ObjectKind>(expr_left).type_name == "string") &&
-                (std::holds_alternative <ObjectKind>(expr_right) && (std::get <ObjectKind>(expr_right).type_name == "int" || 
-                    std::get <ObjectKind>(expr_right).type_name == "uint")))
-            {
-                return "xx_string_sub_right(" + ExprToStr(expr.view_Binary().lhs()) + ", " + 
-                    (IsLvalue(expr.view_Binary().lhs()) ? "0, " : "1, ") + ExprToStr(expr.view_Binary().rhs()) + ')';
-            }
-            else if (expr.view_Binary().op() == "-" &&
-                (std::holds_alternative <ArrayKind>(expr_left)) &&
-                (std::holds_alternative <ObjectKind>(expr_right) && (std::get <ObjectKind>(expr_right).type_name == "int" ||
-                    std::get <ObjectKind>(expr_right).type_name == "uint")))
-            {
-                return "xx_array_sub_right(" + ExprToStr(expr.view_Binary().lhs()) + ", " +
-                    (IsLvalue(expr.view_Binary().lhs()) ? "0, " : "1, ") + ExprToStr(expr.view_Binary().rhs()) + ')';
-            }
-            else if (expr.view_Binary().op() == "-" &&
-                (std::holds_alternative <ObjectKind>(expr_left) && (std::get <ObjectKind>(expr_left).type_name == "int" ||
-                    std::get <ObjectKind>(expr_left).type_name == "uint")) &&
-                (std::holds_alternative <ObjectKind>(expr_right) && std::get <ObjectKind>(expr_right).type_name == "string"))
-            {
-                return "xx_string_sub_left(" + ExprToStr(expr.view_Binary().lhs()) +
-                    ExprToStr(expr.view_Binary().rhs()) + ", " + (IsLvalue(expr.view_Binary().rhs()) ? "0)" : "1)");
-            }
-            else if (expr.view_Binary().op() == "-" &&
-                (std::holds_alternative <ObjectKind>(expr_left) && (std::get <ObjectKind>(expr_left).type_name == "int" ||
-                    std::get <ObjectKind>(expr_left).type_name == "uint")) &&
-                (std::holds_alternative <ArrayKind>(expr_right)))
-            {
-                return "xx_array_sub_left(" + ExprToStr(expr.view_Binary().lhs()) +
-                    ExprToStr(expr.view_Binary().rhs()) + ", " + (IsLvalue(expr.view_Binary().rhs()) ? "0)" : "1)");
-            }
-
-            return ExprToStr(expr.view_Binary().lhs()) + expr.view_Binary().op() + ExprToStr(expr.view_Binary().rhs());
+            return "Whatever";
         }
         case selector::UnaryExpr:
             return expr.view_Unary().op() + ExprToStr(expr.view_Unary().expr());
@@ -1017,6 +942,7 @@ namespace val
             );
         }
 
+        std::unordered_set <std::string> passed_as_inout;
         for (size_t i = 0; i < view_fncall.size(); i++)
         {
             if (not CanBeAssigned(
@@ -1032,6 +958,22 @@ namespace val
                     line
                 );
             }
+
+            std::string next_expr = ExprToStr(view_fncall.args(i));
+            if (fn_info.param_symbol_table.at(fn_info.order_param[i]).is_inout)
+            {
+                if (passed_as_inout.contains(next_expr))
+                {
+                    throw SemanticException(
+                        "Inout uniqueness is not satisfied",
+                        filename,
+                        FnCallExpr,
+                        line
+                    );
+                }
+            }
+
+            passed_as_inout.insert(next_expr);
         }
 
         return fn_info.ret_kind;
@@ -1339,7 +1281,6 @@ namespace val
             }
 
             arr_types.push_front(active_prop_for_init);
-            is_prop_init = false;
             return ArrayKind{ std::to_string(view_inlist.size()), false, ObjectKind{ false, active_prop_for_init } };
         }
         else {
@@ -1524,6 +1465,8 @@ namespace val
         {
 			throw SemanticException("Expression does not Deduce to Array of Type " + view.type_info().view_VarInit().type_name(), filename, ArrayInitStmt, GetLine(array_init_stmt));
         }
+
+        is_prop_init = false;
 
         std::string expr_str = ExprToStr(view.alloc_size());
         if (expr_str != "NULL") {

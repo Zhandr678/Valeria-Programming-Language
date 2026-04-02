@@ -1,0 +1,30 @@
+struct Struct
+{
+	int a;
+	double d;
+	string s;
+}
+
+// Here, we do not copy, compiler calls MVS_RegisterNew that increments refcount to 2
+fn ViewStructValues(Struct s) -> void
+{
+	printf("a: %d\nd: %f\ns: %s\n", s.a, s.d, s.s);
+}
+
+// Here, the refcount is incremented to 2, but after assignment statements, the compiler creates a real copy
+fn AlterStructAndView(Struct s) -> void
+{
+	s.a = 777;
+	s.d = 777.777;
+	s.s = "777";
+
+	ViewStructValues(s);
+}
+
+Struct s = Struct{ 111, 111.111, "111" };
+
+ViewStructValues(s);
+AlterStructAndView(s);
+
+// We are sure that 's' is not changed:
+printf("a: %d\nd: %f\ns: %s\n", s.a, s.d, s.s);

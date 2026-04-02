@@ -1,0 +1,21 @@
+property cmd
+{
+	move: { double dx, dy; }
+	rotate: { double angle; }
+	stop: {}
+}
+
+cmd cc[] = { move{ 5.0, 5.0 }, rotate{ 90.0 }, stop{} };
+
+for (int i = 0; i < len(cc); i = i + 1) 
+{
+
+	printf("[Command Number %d] ", i);
+	match(cc[i])
+	{
+		case move -> { printf("moved: %f, %f\n", cc[i].dx, cc[i].dy); }
+		case rotate -> { printf("rotated: %f\n", cc[i].angle); }
+		case stop -> { printf("stopped\n"); }
+	}
+
+}

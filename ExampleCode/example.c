@@ -618,174 +618,47 @@ string* xx_clone_string(string* ptr)
     return clone;
 }
 
-typedef struct cmd cmd;
-void xx_free_cmd(uintptr_t address);
+typedef struct Data {
+	int a;
+	string* s;
+	array* ds;
+	char c;
+	} Data;
 
-typedef struct move {
-	double dx;
-	double dy;
-	} move;
-
-typedef struct rotate {
-	double angle;
-	} rotate;
-
-typedef struct stop stop;
-
-typedef enum cmd_Tag {
-	move_tag, rotate_tag, stop_tag, 
-} cmd_Tag;
-
-typedef union cmd_Opts {
-	move* move_opt;
-	rotate* rotate_opt;
-	stop* stop_opt;
-} cmd_Opts;
-
-typedef struct cmd {
-	cmd_Tag tag;
-	cmd_Opts opts;
-} cmd;
-
-bool xx_cmd_option_is_move(const cmd* prop)
+void xx_free_Data(uintptr_t address)
 {
-	return prop->tag == move_tag;
-}
-
-bool xx_cmd_option_is_rotate(const cmd* prop)
-{
-	return prop->tag == rotate_tag;
-}
-
-bool xx_cmd_option_is_stop(const cmd* prop)
-{
-	return prop->tag == stop_tag;
-}
-
-void xx_free_cmd(uintptr_t address)
-{
-	if ((((cmd*)address)->tag == move_tag) && (((cmd*)address)->opts.move_opt != NULL)) 
+	if (((Data*)address)->s != NULL)
 	{
-		MVS_DetachPointer((uintptr_t)((cmd*)address)->opts.move_opt);
+		MVS_DetachPointer((uintptr_t)((Data*)address)->s);
 	}
-	if ((((cmd*)address)->tag == rotate_tag) && (((cmd*)address)->opts.rotate_opt != NULL)) 
+	if (((Data*)address)->ds != NULL)
 	{
-		MVS_DetachPointer((uintptr_t)((cmd*)address)->opts.rotate_opt);
+		MVS_DetachPointer((uintptr_t)((Data*)address)->ds);
 	}
-	if ((((cmd*)address)->tag == stop_tag) && (((cmd*)address)->opts.stop_opt != NULL)) 
-	{
-		MVS_DetachPointer((uintptr_t)((cmd*)address)->opts.stop_opt);
+	free(((Data*)address));
+}
+
+Data* xx_init_Data(int a, string* s, array* ds, char c) 
+{
+	Data *xx_init_ptr = malloc(sizeof(Data));
+	xx_init_ptr->a = a;
+	xx_init_ptr->s = s;
+	if (s != NULL) {
+		MVS_RegisterNew((uintptr_t)s, sizeof(string), xx_free_string);
 	}
-	free(((cmd*)address));
+	xx_init_ptr->ds = ds;
+	if (ds != NULL) {
+		MVS_RegisterNew((uintptr_t)ds, sizeof(array), xx_free_array);
+	}
+	xx_init_ptr->c = c;
+	return xx_init_ptr;
 }
 
-void xx_free_move(uintptr_t address)
-{
-	free(((move*)address));
-}
-
-move* xx_init_move(double dx, double dy) 
-{
-	move *xx_move_init_ptr = malloc(sizeof(move));
-	xx_move_init_ptr->dx = dx;
-	xx_move_init_ptr->dy = dy;
-	return xx_move_init_ptr;
-}
-
-move* xx_clone_move(move* ptr) 
+Data* xx_clone_Data(Data* ptr) 
 {
 	if (ptr == NULL) { return NULL; }
-	move* clone = xx_init_move(ptr->dx, ptr->dy);
-	MVS_RegisterNew((uintptr_t)clone, sizeof(move), xx_free_move);
-	return clone;
-}
-
-void xx_free_rotate(uintptr_t address)
-{
-	free(((rotate*)address));
-}
-
-rotate* xx_init_rotate(double angle) 
-{
-	rotate *xx_rotate_init_ptr = malloc(sizeof(rotate));
-	xx_rotate_init_ptr->angle = angle;
-	return xx_rotate_init_ptr;
-}
-
-rotate* xx_clone_rotate(rotate* ptr) 
-{
-	if (ptr == NULL) { return NULL; }
-	rotate* clone = xx_init_rotate(ptr->angle);
-	MVS_RegisterNew((uintptr_t)clone, sizeof(rotate), xx_free_rotate);
-	return clone;
-}
-
-void xx_free_stop(uintptr_t address)
-{
-}
-
-stop* xx_init_stop()
-{
-	return NULL;
-}
-
-stop* xx_clone_stop(stop* ptr) 
-{
-	if (ptr == NULL) { return NULL; }
-	stop* clone = xx_init_stop();
-	return clone;
-}
-
-cmd* xx_init_cmd_move(move* move_opt)
-{
-	cmd* xx_init_cmd_ptr = malloc(sizeof(cmd));
-	xx_init_cmd_ptr->tag = move_tag;
-	xx_init_cmd_ptr->opts.move_opt = move_opt;
-	if (move_opt != NULL)
-	{
-		MVS_RegisterNew((uintptr_t)move_opt, sizeof(move), xx_free_move);
-	}
-	return xx_init_cmd_ptr;
-}
-
-cmd* xx_init_cmd_rotate(rotate* rotate_opt)
-{
-	cmd* xx_init_cmd_ptr = malloc(sizeof(cmd));
-	xx_init_cmd_ptr->tag = rotate_tag;
-	xx_init_cmd_ptr->opts.rotate_opt = rotate_opt;
-	if (rotate_opt != NULL)
-	{
-		MVS_RegisterNew((uintptr_t)rotate_opt, sizeof(rotate), xx_free_rotate);
-	}
-	return xx_init_cmd_ptr;
-}
-
-cmd* xx_init_cmd_stop(stop* stop_opt)
-{
-	cmd* xx_init_cmd_ptr = malloc(sizeof(cmd));
-	xx_init_cmd_ptr->tag = stop_tag;
-	xx_init_cmd_ptr->opts.stop_opt = stop_opt;
-	return xx_init_cmd_ptr;
-}
-
-cmd* xx_clone_cmd(cmd* ptr) 
-{
-	if (ptr == NULL) { return NULL; }
-	cmd* clone = malloc(sizeof(cmd));
-	clone->tag = ptr->tag;
-	switch (ptr->tag)
-	{
-	case move_tag:
-		clone->opts.move_opt = xx_clone_move(ptr->opts.move_opt);
-		break;
-	case rotate_tag:
-		clone->opts.rotate_opt = xx_clone_rotate(ptr->opts.rotate_opt);
-		break;
-	case stop_tag:
-		clone->opts.stop_opt = xx_clone_stop(ptr->opts.stop_opt);
-		break;
-	}
-	MVS_RegisterNew((uintptr_t)clone, sizeof(cmd), xx_free_cmd);
+	Data* clone = xx_init_Data(ptr->a, xx_clone_string(ptr->s), xx_clone_array(ptr->ds), ptr->c);
+	MVS_RegisterNew((uintptr_t)clone, sizeof(Data), xx_free_Data);
 	return clone;
 }
 
@@ -794,33 +667,46 @@ cmd* xx_clone_cmd(cmd* ptr)
 int main()
 {
 	MVS_Init();
-	array* cc = xx_init_array((cmd*[]) {xx_init_cmd_move(xx_init_move(5.000000, 5.000000)), xx_init_cmd_rotate(xx_init_rotate(90.000000)), xx_init_cmd_stop(xx_init_stop()), }, 3, sizeof(stop*), 1, xx_free_stop);
-	MVS_RegisterNew((uintptr_t)cc, sizeof(array), xx_free_array);
+	Data* data1 = xx_init_Data(5, xx_init_string("Hello"), xx_init_array((double[]) {3.140000, 2.720000, 1.610000, 6.670000, 9.100000, }, 5, sizeof(double), 0, NULL), 'x');
+	MVS_RegisterNew((uintptr_t)data1, sizeof(Data), xx_free_Data);
+	Data* data2 = data1;
+	MVS_RegisterNew((uintptr_t)data2, sizeof(Data), xx_free_Data);
+	if (MVS_RefCount((uintptr_t)data2) > 1)
 	{
-		int i = 0;
-		while(1)
+		Data* xx_clone = xx_clone_Data(data2);
+		MVS_DetachPointer((uintptr_t)data2);
+		array* xx_field_arr = xx_clone->ds;
+		if (MVS_RefCount((uintptr_t)xx_field_arr) > 1)
 		{
-			if (!(i<cc->length)) { break; }
-			{
-				printf("[Command Number %d] ", i);
-				if (xx_cmd_option_is_move((*(cmd**)xx_array_get(cc, i))))
-				{
-					printf("moved: %f, %f\n", (*(cmd**)xx_array_get(cc, i))->opts.move_opt->dx, (*(cmd**)xx_array_get(cc, i))->opts.move_opt->dy);
-				}
-				else if (xx_cmd_option_is_rotate((*(cmd**)xx_array_get(cc, i))))
-				{
-					printf("rotated: %f\n", (*(cmd**)xx_array_get(cc, i))->opts.rotate_opt->angle);
-				}
-				else if (xx_cmd_option_is_stop((*(cmd**)xx_array_get(cc, i))))
-				{
-					printf("stopped\n");
-				}
-			}
-			{
-				i = i+1;
-			}
+			array* xx_arr_clone = xx_clone_array(xx_field_arr);
+			MVS_DetachPointer((uintptr_t)xx_field_arr);
+			xx_clone->ds = xx_arr_clone;
+			xx_array_set(xx_arr_clone, 0, &(double){3.140000*100.000000});
+		}
+		else
+		{
+			xx_array_set(xx_field_arr, 0, &(double){3.140000*100.000000});
+		}
+		data2 = xx_clone;
+	}
+	else
+	{
+		array* xx_field_arr = data2->ds;
+		if (MVS_RefCount((uintptr_t)xx_field_arr) > 1)
+		{
+			array* xx_arr_clone = xx_clone_array(xx_field_arr);
+			MVS_DetachPointer((uintptr_t)xx_field_arr);
+			data2->ds = xx_arr_clone;
+			xx_array_set(xx_arr_clone, 0, &(double){3.140000*100.000000});
+		}
+		else
+		{
+			xx_array_set(xx_field_arr, 0, &(double){3.140000*100.000000});
 		}
 	}
-	MVS_DetachPointer((uintptr_t)cc);
+	printf("data1.ds[0] = %f\n", (*(double*)xx_array_get(data1->ds, 0)));
+	printf("data2.ds[0] = %f\n", (*(double*)xx_array_get(data2->ds, 0)));
+	MVS_DetachPointer((uintptr_t)data1);
+	MVS_DetachPointer((uintptr_t)data2);
 	MVS_Destroy();
 }

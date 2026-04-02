@@ -1,0 +1,18 @@
+struct ListNode
+{
+	ListNode node;
+	int val;
+}
+
+ListNode root = ListNode{ ListNode{ ListNode{ null, 3 }, 2 }, 1 };
+
+// MVS utilizes its no-copy-until-mutation semantics to effectively traverse a recursive ADT
+fn traverse(ListNode node) -> void
+{
+	if (node == null) { return; }
+
+	printf("->%d", node.val);
+	traverse(node.node);
+}
+
+traverse(root);
