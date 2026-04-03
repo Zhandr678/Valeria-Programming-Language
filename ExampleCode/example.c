@@ -618,95 +618,18 @@ string* xx_clone_string(string* ptr)
     return clone;
 }
 
-typedef struct Data {
-	int a;
-	string* s;
-	array* ds;
-	char c;
-	} Data;
-
-void xx_free_Data(uintptr_t address)
-{
-	if (((Data*)address)->s != NULL)
-	{
-		MVS_DetachPointer((uintptr_t)((Data*)address)->s);
-	}
-	if (((Data*)address)->ds != NULL)
-	{
-		MVS_DetachPointer((uintptr_t)((Data*)address)->ds);
-	}
-	free(((Data*)address));
-}
-
-Data* xx_init_Data(int a, string* s, array* ds, char c) 
-{
-	Data *xx_init_ptr = malloc(sizeof(Data));
-	xx_init_ptr->a = a;
-	xx_init_ptr->s = s;
-	if (s != NULL) {
-		MVS_RegisterNew((uintptr_t)s, sizeof(string), xx_free_string);
-	}
-	xx_init_ptr->ds = ds;
-	if (ds != NULL) {
-		MVS_RegisterNew((uintptr_t)ds, sizeof(array), xx_free_array);
-	}
-	xx_init_ptr->c = c;
-	return xx_init_ptr;
-}
-
-Data* xx_clone_Data(Data* ptr) 
-{
-	if (ptr == NULL) { return NULL; }
-	Data* clone = xx_init_Data(ptr->a, xx_clone_string(ptr->s), xx_clone_array(ptr->ds), ptr->c);
-	MVS_RegisterNew((uintptr_t)clone, sizeof(Data), xx_free_Data);
-	return clone;
-}
-
 
 
 int main()
 {
 	MVS_Init();
-	Data* data1 = xx_init_Data(5, xx_init_string("Hello"), xx_init_array((double[]) {3.140000, 2.720000, 1.610000, 6.670000, 9.100000, }, 5, sizeof(double), 0, NULL), 'x');
-	MVS_RegisterNew((uintptr_t)data1, sizeof(Data), xx_free_Data);
-	Data* data2 = data1;
-	MVS_RegisterNew((uintptr_t)data2, sizeof(Data), xx_free_Data);
-	if (MVS_RefCount((uintptr_t)data2) > 1)
 	{
-		Data* xx_clone = xx_clone_Data(data2);
-		MVS_DetachPointer((uintptr_t)data2);
-		array* xx_field_arr = xx_clone->ds;
-		if (MVS_RefCount((uintptr_t)xx_field_arr) > 1)
-		{
-			array* xx_arr_clone = xx_clone_array(xx_field_arr);
-			MVS_DetachPointer((uintptr_t)xx_field_arr);
-			xx_clone->ds = xx_arr_clone;
-			xx_array_set(xx_arr_clone, 0, &(double){3.140000*100.000000});
-		}
-		else
-		{
-			xx_array_set(xx_field_arr, 0, &(double){3.140000*100.000000});
-		}
-		data2 = xx_clone;
 	}
-	else
 	{
-		array* xx_field_arr = data2->ds;
-		if (MVS_RefCount((uintptr_t)xx_field_arr) > 1)
+		int a;
 		{
-			array* xx_arr_clone = xx_clone_array(xx_field_arr);
-			MVS_DetachPointer((uintptr_t)xx_field_arr);
-			data2->ds = xx_arr_clone;
-			xx_array_set(xx_arr_clone, 0, &(double){3.140000*100.000000});
-		}
-		else
-		{
-			xx_array_set(xx_field_arr, 0, &(double){3.140000*100.000000});
 		}
 	}
-	printf("data1.ds[0] = %f\n", (*(double*)xx_array_get(data1->ds, 0)));
-	printf("data2.ds[0] = %f\n", (*(double*)xx_array_get(data2->ds, 0)));
-	MVS_DetachPointer((uintptr_t)data1);
-	MVS_DetachPointer((uintptr_t)data2);
+	int a;
 	MVS_Destroy();
 }

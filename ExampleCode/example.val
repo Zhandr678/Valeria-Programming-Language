@@ -1,24 +1,13 @@
-// Say, we have a big ADT, Data
-struct Data
 {
-	int a;
-	string s;
 	
-	double ds[];
-	char c;
 }
 
-// Create a new variable
-Data data1 = Data{ 5, "Hello", { 3.14, 2.72, 1.61, 6.67, 9.1 }, 'x' };
+{
+	int a;
 
-// User view: (copy data1 to data2), Compiler: (alias data2 as data1)
-Data data2 = data1;
+	{
+		
+	}
+}
 
-// While we are not modifying data1 or data2, the resources are shared
-
-// The moment we mutate data, compiler creates copy in the runtime
-data2.ds[0] = 3.14 * 100.0;
-
-// Check data1, it should be intact, while data2 has 314.0
-printf("data1.ds[0] = %f\n", data1.ds[0]);
-printf("data2.ds[0] = %f\n", data2.ds[0]);
+int a;
